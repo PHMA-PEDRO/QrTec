@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:qrtec_final/telas/tela_busca_historico.dart';
 import 'package:qrtec_final/telas/tela_cadastro_equipamento.dart';
 import 'package:qrtec_final/telas/tela_cadastro_projeto.dart';
 import 'package:qrtec_final/telas/tela_lista_projetos_admin.dart';
@@ -12,6 +13,7 @@ class TelaAdminDashboard extends StatelessWidget {
   Future<void> _fazerLogout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
     if (context.mounted) {
+      // Usamos pushAndRemoveUntil para limpar a pilha de navegação após o logout
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const TelaLogin()),
@@ -38,6 +40,7 @@ class TelaAdminDashboard extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
+          // Seção de Gerenciamento
           const Text(
             'Gerenciamento',
             style: TextStyle(
@@ -54,12 +57,15 @@ class TelaAdminDashboard extends StatelessWidget {
                 color: Colors.indigo,
               ),
               title: const Text('Cadastrar Novo Projeto'),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TelaCadastroProjeto(),
-                ),
-              ),
+              subtitle: const Text('Crie um novo estoque/local de trabalho'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TelaCadastroProjeto(),
+                  ),
+                );
+              },
             ),
           ),
           Card(
@@ -69,12 +75,15 @@ class TelaAdminDashboard extends StatelessWidget {
                 color: Colors.indigo,
               ),
               title: const Text('Cadastrar Equipamento'),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TelaCadastroEquipamento(),
-                ),
-              ),
+              subtitle: const Text('Adicione um novo item e gere sua TAG'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TelaCadastroEquipamento(),
+                  ),
+                );
+              },
             ),
           ),
           Card(
@@ -84,17 +93,22 @@ class TelaAdminDashboard extends StatelessWidget {
                 color: Colors.indigo,
               ),
               title: const Text('Vincular Usuário a Projeto'),
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TelaVincularUsuario(),
-                ),
-              ),
+              subtitle: const Text('Dê permissão de acesso a um cliente'),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TelaVincularUsuario(),
+                  ),
+                );
+              },
             ),
           ),
           const SizedBox(height: 24),
+
+          // Seção de Consultas e Relatórios
           const Text(
-            'Consultas',
+            'Consultas e Relatórios',
             style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.bold,
@@ -109,12 +123,29 @@ class TelaAdminDashboard extends StatelessWidget {
                 color: Colors.indigo,
               ),
               title: const Text('Consultar Estoques de Projetos'),
-              subtitle: const Text('Veja o inventário de cada projeto'),
+              subtitle: const Text('Veja o inventário atual de cada projeto'),
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => const TelaListaProjetosAdmin(),
+                  ),
+                );
+              },
+            ),
+          ),
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.history_outlined, color: Colors.indigo),
+              title: const Text('Histórico de Equipamento'),
+              subtitle: const Text(
+                'Rastreie todas as movimentações de uma TAG',
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TelaBuscaHistorico(),
                   ),
                 );
               },

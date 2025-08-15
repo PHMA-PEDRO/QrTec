@@ -1,4 +1,5 @@
 // lib/telas/tela_home.dart
+// VERSÃO AJUSTADA: Fluxo de foto obrigatória ANTES do scan.
 
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -62,17 +63,23 @@ class _TelaHomeState extends State<TelaHome> {
   }
 
   Future<void> _buscarProjetosDoUsuario() async {
-    setState(() { _carregandoProjetos = true; });
+    setState(() {
+      _carregandoProjetos = true;
+    });
     final user = _auth.currentUser;
     if (user == null) {
       return;
     }
     try {
-      final userDoc = await _firestore.collection('usuarios').doc(user.uid).get();
+      final userDoc = await _firestore
+          .collection('usuarios')
+          .doc(user.uid)
+          .get();
       if (!userDoc.exists) {
         return;
       }
-      final List<dynamic> projetosIds = userDoc.data()?['projetos_acesso'] ?? [];
+      final List<dynamic> projetosIds =
+          userDoc.data()?['projetos_acesso'] ?? [];
       if (projetosIds.isEmpty) {
         if (mounted) {
           setState(() {
@@ -84,12 +91,17 @@ class _TelaHomeState extends State<TelaHome> {
 
       List<Projeto> projetosTemp = [];
       for (String id in projetosIds) {
-        final projetoDoc = await _firestore.collection('projetos').doc(id).get();
+        final projetoDoc = await _firestore
+            .collection('projetos')
+            .doc(id)
+            .get();
         if (projetoDoc.exists) {
-          projetosTemp.add(Projeto(
-            id: projetoDoc.id,
-            nome: projetoDoc.data()?['nomeProjeto'] ?? 'Nome indisponível',
-          ));
+          projetosTemp.add(
+            Projeto(
+              id: projetoDoc.id,
+              nome: projetoDoc.data()?['nomeProjeto'] ?? 'Nome indisponível',
+            ),
+          );
         }
       }
       if (mounted) {
@@ -117,9 +129,12 @@ class _TelaHomeState extends State<TelaHome> {
     }
   }
 
-  Future<void> _pegarImagem(ImageSource source) async {
+  Future<void> _capturarFoto() async {
     final ImagePicker picker = ImagePicker();
-    final XFile? imagem = await picker.pickImage(source: source, imageQuality: 80);
+    final XFile? imagem = await picker.pickImage(
+      source: ImageSource.camera,
+      imageQuality: 80,
+    );
 
     if (imagem != null) {
       setState(() {
@@ -128,65 +143,32 @@ class _TelaHomeState extends State<TelaHome> {
     }
   }
 
-  void _mostrarOpcoesDeImagem() {
-    showModalBottomSheet(
-      context: context,
-      builder: (context) {
-        return SafeArea(
-          child: Wrap(
-            children: <Widget>[
-              ListTile(
-                leading: const Icon(Icons.photo_library),
-                title: const Text('Galeria'),
-                onTap: () {
-                  _pegarImagem(ImageSource.gallery);
-                  Navigator.of(context).pop();
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.photo_camera),
-                title: const Text('Câmera'),
-                onTap: () {
-                  _pegarImagem(ImageSource.camera);
-                  Navigator.of(context).pop();
-                },
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
   Future<void> _registrarMovimentacao(String tipo) async {
-    // CORREÇÃO: Adicionadas chaves {}
-    if (_projetoSelecionadoId == null) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, selecione um projeto primeiro.')));
-      }
+    if (_projetoSelecionadoId == null ||
+        _responsavelController.text.trim().isEmpty ||
+        _imagemSelecionada == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Preencha o responsável, tire a foto e selecione um projeto.',
+          ),
+        ),
+      );
       return;
     }
-    // CORREÇÃO: Adicionadas chaves {}
-    if (_responsavelController.text.trim().isEmpty) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, preencha o nome do responsável.')));
-      }
-      return;
-    }
-    // CORREÇÃO: Adicionadas chaves {}
+
     if (_isLoading) {
       return;
     }
-    
     setState(() {
       _isLoading = true;
     });
 
     try {
-      if (!mounted) {
-        return;
-      }
-      final String? qrCode = await Navigator.push<String>(context, MaterialPageRoute(builder: (context) => const TelaScanner()));
+      final String? qrCode = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(builder: (context) => const TelaScanner()),
+      );
 
       if (qrCode != null) {
         bool servicoHabilitado = await Geolocator.isLocationServiceEnabled();
@@ -206,23 +188,31 @@ class _TelaHomeState extends State<TelaHome> {
         }
 
         Position position = await Geolocator.getCurrentPosition();
-        List<Placemark> placemarks = await placemarkFromCoordinates(position.latitude, position.longitude);
+        List<Placemark> placemarks = await placemarkFromCoordinates(
+          position.latitude,
+          position.longitude,
+        );
         String endereco = 'Localização não encontrada';
         if (placemarks.isNotEmpty) {
           Placemark place = placemarks.first;
-          endereco = "${place.street}, ${place.subLocality}, ${place.locality} - ${place.administrativeArea}";
+          endereco =
+              "${place.street}, ${place.subLocality}, ${place.locality} - ${place.administrativeArea}";
         }
 
-        String? fotoUrl;
-        if (_imagemSelecionada != null) {
-          final String nomeArquivo = '${DateTime.now().millisecondsSinceEpoch}_$qrCode.jpg';
-          final Reference ref = _storage.ref().child('movimentacoes_fotos').child(nomeArquivo);
-          await ref.putFile(_imagemSelecionada!);
-          fotoUrl = await ref.getDownloadURL();
-        }
+        final String nomeArquivo =
+            '${DateTime.now().millisecondsSinceEpoch}_$qrCode.jpg';
+        final Reference ref = _storage
+            .ref()
+            .child('movimentacoes_fotos')
+            .child(nomeArquivo);
+        await ref.putFile(_imagemSelecionada!);
+        final String fotoUrl = await ref.getDownloadURL();
 
         final String responsavel = _responsavelController.text.trim();
         final String? userId = _auth.currentUser?.uid;
+        final String nomeProjetoSelecionado = _listaProjetos
+            .firstWhere((p) => p.id == _projetoSelecionadoId!)
+            .nome;
 
         await _firestore.collection('movimentacoes').add({
           'tagEquipamento': qrCode,
@@ -232,10 +222,13 @@ class _TelaHomeState extends State<TelaHome> {
           'userId': userId,
           'localizacao': endereco,
           'projetoId': _projetoSelecionadoId,
+          'nomeProjeto': nomeProjetoSelecionado,
           'fotoUrl': fotoUrl,
         });
 
-        final String novoStatus = (tipo == 'Entrada') ? 'Em Estoque' : 'Em Transporte';
+        final String novoStatus = (tipo == 'Entrada')
+            ? 'Em Estoque'
+            : 'Em Transporte';
         await _firestore.collection('estoque_atual').doc(qrCode).set({
           'tag': qrCode,
           'status': novoStatus,
@@ -244,12 +237,17 @@ class _TelaHomeState extends State<TelaHome> {
           'responsavel': responsavel,
           'localizacao': endereco,
           'projetoId': _projetoSelecionadoId,
+          'nomeProjeto': nomeProjetoSelecionado,
           'userId': userId,
           'fotoUrl': fotoUrl,
         }, SetOptions(merge: true));
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Equipamento $qrCode registrado com sucesso!')));
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Equipamento $qrCode registrado com sucesso!'),
+            ),
+          );
           setState(() {
             _imagemSelecionada = null;
             _responsavelController.clear();
@@ -258,7 +256,9 @@ class _TelaHomeState extends State<TelaHome> {
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao registrar: ${e.toString()}')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao registrar: ${e.toString()}')),
+        );
       }
     } finally {
       if (mounted) {
@@ -276,7 +276,13 @@ class _TelaHomeState extends State<TelaHome> {
         title: Text('Olá, $_nomeUsuario!'),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
-        actions: [IconButton(icon: const Icon(Icons.logout), tooltip: 'Sair', onPressed: _fazerLogout)],
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout),
+            tooltip: 'Sair',
+            onPressed: _fazerLogout,
+          ),
+        ],
       ),
       body: Stack(
         children: [
@@ -287,19 +293,37 @@ class _TelaHomeState extends State<TelaHome> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   if (_carregandoProjetos) ...[
-                    const Center(child: Padding(padding: EdgeInsets.all(8.0), child: CircularProgressIndicator()))
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
                   ] else if (_listaProjetos.isEmpty) ...[
                     const Center(
                       child: Padding(
                         padding: EdgeInsets.all(16.0),
-                        child: Text('Nenhum projeto vinculado a você.\nPeça a um administrador para vincular.', textAlign: TextAlign.center),
+                        child: Text(
+                          'Nenhum projeto vinculado a você.\nPeça a um administrador para vincular.',
+                          textAlign: TextAlign.center,
+                        ),
                       ),
-                    )
+                    ),
                   ] else ...[
                     DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(labelText: 'Selecione o Projeto', border: OutlineInputBorder()),
+                      decoration: const InputDecoration(
+                        labelText: 'Selecione o Projeto',
+                        border: OutlineInputBorder(),
+                      ),
                       value: _projetoSelecionadoId,
-                      items: _listaProjetos.map((projeto) => DropdownMenuItem(value: projeto.id, child: Text(projeto.nome))).toList(),
+                      items: _listaProjetos
+                          .map(
+                            (projeto) => DropdownMenuItem(
+                              value: projeto.id,
+                              child: Text(projeto.nome),
+                            ),
+                          )
+                          .toList(),
                       onChanged: (value) {
                         setState(() {
                           _projetoSelecionadoId = value;
@@ -308,15 +332,26 @@ class _TelaHomeState extends State<TelaHome> {
                     ),
                   ],
                   const SizedBox(height: 16),
-                  TextField(controller: _responsavelController, decoration: const InputDecoration(labelText: 'Seu Nome (Responsável)', border: OutlineInputBorder(), prefixIcon: Icon(Icons.person_pin_rounded))),
+                  TextField(
+                    controller: _responsavelController,
+                    decoration: const InputDecoration(
+                      labelText: 'Seu Nome (Responsável)',
+                      border: OutlineInputBorder(),
+                      prefixIcon: Icon(Icons.person_pin_rounded),
+                    ),
+                  ),
                   const SizedBox(height: 16),
-                  
+
                   OutlinedButton.icon(
                     icon: const Icon(Icons.camera_alt),
-                    label: const Text('Anexar Foto (Opcional)'),
-                    onPressed: _mostrarOpcoesDeImagem,
+                    label: const Text('1. Tirar Foto Obrigatória'),
+                    onPressed: _capturarFoto,
                     style: OutlinedButton.styleFrom(
-                      side: BorderSide(color: _imagemSelecionada != null ? Colors.green : Colors.grey),
+                      side: BorderSide(
+                        color: _imagemSelecionada != null
+                            ? Colors.green
+                            : Colors.grey,
+                      ),
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       textStyle: const TextStyle(fontSize: 16),
                     ),
@@ -336,13 +371,21 @@ class _TelaHomeState extends State<TelaHome> {
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(4),
-                            child: Image.file(_imagemSelecionada!, fit: BoxFit.cover),
+                            child: Image.file(
+                              _imagemSelecionada!,
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                         IconButton(
                           icon: const CircleAvatar(
                             backgroundColor: Colors.black54,
-                            child: Icon(Icons.close, color: Colors.white, size: 18)),
+                            child: Icon(
+                              Icons.close,
+                              color: Colors.white,
+                              size: 18,
+                            ),
+                          ),
                           onPressed: () {
                             setState(() {
                               _imagemSelecionada = null;
@@ -351,21 +394,35 @@ class _TelaHomeState extends State<TelaHome> {
                         ),
                       ],
                     ),
-                  
+
                   const SizedBox(height: 24),
 
                   ElevatedButton.icon(
                     icon: const Icon(Icons.qr_code_scanner),
-                    label: const Text('Registrar Entrada'),
-                    style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), textStyle: const TextStyle(fontSize: 16)),
-                    onPressed: _isLoading || _projetoSelecionadoId == null ? null : () => _registrarMovimentacao('Entrada'),
+                    label: const Text('2. Registrar Entrada'),
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      textStyle: const TextStyle(fontSize: 16),
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                    ),
+                    onPressed: _isLoading || _imagemSelecionada == null
+                        ? null
+                        : () => _registrarMovimentacao('Entrada'),
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton.icon(
                     icon: const Icon(Icons.qr_code_scanner),
-                    label: const Text('Registrar Saída'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.orange.shade700, foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), textStyle: const TextStyle(fontSize: 16)),
-                    onPressed: _isLoading || _projetoSelecionadoId == null ? null : () => _registrarMovimentacao('Saída'),
+                    label: const Text('2. Registrar Saída'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orange.shade700,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      textStyle: const TextStyle(fontSize: 16),
+                    ),
+                    onPressed: _isLoading || _imagemSelecionada == null
+                        ? null
+                        : () => _registrarMovimentacao('Saída'),
                   ),
                   const SizedBox(height: 40),
                   const Divider(),
@@ -373,13 +430,28 @@ class _TelaHomeState extends State<TelaHome> {
                   OutlinedButton.icon(
                     icon: const Icon(Icons.inventory_2_outlined),
                     label: const Text('Ver Estoque Atual'),
-                    style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), textStyle: const TextStyle(fontSize: 16)),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      textStyle: const TextStyle(fontSize: 16),
+                    ),
                     onPressed: () {
                       if (_projetoSelecionadoId == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Por favor, selecione um projeto para ver o estoque.')));
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Por favor, selecione um projeto para ver o estoque.',
+                            ),
+                          ),
+                        );
                         return;
                       }
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => TelaEstoque(projectId: _projetoSelecionadoId!)));
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              TelaEstoque(projectId: _projetoSelecionadoId!),
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -388,11 +460,8 @@ class _TelaHomeState extends State<TelaHome> {
           ),
           if (_isLoading)
             Container(
-              // CORREÇÃO: Uso de Colors.black54 para remover o aviso
               color: Colors.black54,
-              child: const Center(
-                child: CircularProgressIndicator(),
-              ),
+              child: const Center(child: CircularProgressIndicator()),
             ),
         ],
       ),
