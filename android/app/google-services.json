@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "666278182382",
+    "project_id": "qrtec-final-app",
+    "storage_bucket": "qrtec-final-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:666278182382:android:c8597196c934c2a6fa22ff",
+        "android_client_info": {
+          "package_name": "com.example.qrtec_final"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCySidz0OoibrNDzdzeNsQxA5p5xdh5fZo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
