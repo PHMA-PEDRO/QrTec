@@ -3,9 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:qrtec_final/telas/tela_busca_historico.dart';
 import 'package:qrtec_final/telas/tela_cadastro_equipamento.dart';
 import 'package:qrtec_final/telas/tela_cadastro_projeto.dart';
+import 'package:qrtec_final/telas/tela_gerenciar_vinculos.dart'; // Import correto
+import 'package:qrtec_final/telas/tela_historico_geral.dart';
 import 'package:qrtec_final/telas/tela_lista_projetos_admin.dart';
 import 'package:qrtec_final/telas/tela_login.dart';
-import 'package:qrtec_final/telas/tela_vincular_usuario.dart';
 
 class TelaAdminDashboard extends StatelessWidget {
   const TelaAdminDashboard({super.key});
@@ -13,7 +14,6 @@ class TelaAdminDashboard extends StatelessWidget {
   Future<void> _fazerLogout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
     if (context.mounted) {
-      // Usamos pushAndRemoveUntil para limpar a pilha de navegação após o logout
       Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (context) => const TelaLogin()),
@@ -57,7 +57,6 @@ class TelaAdminDashboard extends StatelessWidget {
                 color: Colors.indigo,
               ),
               title: const Text('Cadastrar Novo Projeto'),
-              subtitle: const Text('Crie um novo estoque/local de trabalho'),
               onTap: () {
                 Navigator.push(
                   context,
@@ -75,7 +74,6 @@ class TelaAdminDashboard extends StatelessWidget {
                 color: Colors.indigo,
               ),
               title: const Text('Cadastrar Equipamento'),
-              subtitle: const Text('Adicione um novo item e gere sua TAG'),
               onTap: () {
                 Navigator.push(
                   context,
@@ -89,16 +87,21 @@ class TelaAdminDashboard extends StatelessWidget {
           Card(
             child: ListTile(
               leading: const Icon(
-                Icons.person_add_alt_1_outlined,
+                Icons.people_alt_outlined,
                 color: Colors.indigo,
               ),
-              title: const Text('Vincular Usuário a Projeto'),
-              subtitle: const Text('Dê permissão de acesso a um cliente'),
+              title: const Text(
+                'Gerenciar Vínculos de Usuários',
+              ), // Nome ajustado
+              subtitle: const Text(
+                'Vincule ou desvincule clientes de projetos',
+              ),
               onTap: () {
+                // Rota ajustada para a tela correta
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const TelaVincularUsuario(),
+                    builder: (context) => const TelaGerenciarVinculos(),
                   ),
                 );
               },
@@ -138,14 +141,32 @@ class TelaAdminDashboard extends StatelessWidget {
             child: ListTile(
               leading: const Icon(Icons.history_outlined, color: Colors.indigo),
               title: const Text('Histórico de Equipamento'),
-              subtitle: const Text(
-                'Rastreie todas as movimentações de uma TAG',
-              ),
+              subtitle: const Text('Rastreie uma TAG específica'),
               onTap: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
                     builder: (context) => const TelaBuscaHistorico(),
+                  ),
+                );
+              },
+            ),
+          ),
+          Card(
+            child: ListTile(
+              leading: const Icon(
+                Icons.dynamic_feed_outlined,
+                color: Colors.indigo,
+              ),
+              title: const Text('Histórico Geral de Movimentações'),
+              subtitle: const Text(
+                'Veja todas as entradas e saídas em tempo real',
+              ),
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TelaHistoricoGeral(),
                   ),
                 );
               },
