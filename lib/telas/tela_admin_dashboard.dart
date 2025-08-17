@@ -1,9 +1,12 @@
+// lib/telas/tela_admin_dashboard.dart
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:qrtec_final/telas/tela_busca_historico.dart';
 import 'package:qrtec_final/telas/tela_cadastro_equipamento.dart';
 import 'package:qrtec_final/telas/tela_cadastro_projeto.dart';
-import 'package:qrtec_final/telas/tela_gerenciar_vinculos.dart'; // Import correto
+import 'package:qrtec_final/telas/tela_gerenciar_vinculos.dart';
 import 'package:qrtec_final/telas/tela_historico_geral.dart';
 import 'package:qrtec_final/telas/tela_lista_projetos_admin.dart';
 import 'package:qrtec_final/telas/tela_login.dart';
@@ -24,6 +27,8 @@ class TelaAdminDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final firestore = FirebaseFirestore.instance;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Painel do Administrador'),
@@ -34,145 +39,207 @@ class TelaAdminDashboard extends StatelessWidget {
             icon: const Icon(Icons.logout),
             tooltip: 'Sair',
             onPressed: () => _fazerLogout(context),
-          ),
+          )
         ],
       ),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
-          // Seção de Gerenciamento
-          const Text(
-            'Gerenciamento',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.indigo,
-            ),
-          ),
-          const Divider(),
-          Card(
-            child: ListTile(
-              leading: const Icon(
-                Icons.add_business_outlined,
-                color: Colors.indigo,
+          const Text('Visão Geral', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
+          const SizedBox(height: 16),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 2.5,
+            children: [
+              DashboardStatCard(
+                stream: firestore.collection('projetos').snapshots(),
+                icon: Icons.business_center,
+                label: 'Projetos',
+                color: Colors.blue.shade700,
               ),
-              title: const Text('Cadastrar Novo Projeto'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const TelaCadastroProjeto(),
-                  ),
-                );
-              },
-            ),
-          ),
-          Card(
-            child: ListTile(
-              leading: const Icon(
-                Icons.add_moderator_outlined,
-                color: Colors.indigo,
+              DashboardStatCard(
+                stream: firestore.collection('equipamentos').where('status_operacional', isEqualTo: 'Ativo').snapshots(),
+                icon: Icons.computer,
+                label: 'Equip. Ativos',
+                color: Colors.teal.shade700,
               ),
-              title: const Text('Cadastrar Equipamento'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const TelaCadastroEquipamento(),
-                  ),
-                );
-              },
-            ),
-          ),
-          Card(
-            child: ListTile(
-              leading: const Icon(
-                Icons.people_alt_outlined,
-                color: Colors.indigo,
+              DashboardStatCard(
+                stream: firestore.collection('estoque_atual').where('status', isEqualTo: 'Em Estoque').snapshots(),
+                icon: Icons.inventory_2,
+                label: 'Em Estoque',
+                color: Colors.green.shade700,
               ),
-              title: const Text(
-                'Gerenciar Vínculos de Usuários',
-              ), // Nome ajustado
-              subtitle: const Text(
-                'Vincule ou desvincule clientes de projetos',
+              DashboardStatCard(
+                stream: firestore.collection('estoque_atual').where('status', isEqualTo: 'Em Transporte').snapshots(),
+                icon: Icons.local_shipping,
+                label: 'Em Transporte',
+                color: Colors.orange.shade800,
               ),
-              onTap: () {
-                // Rota ajustada para a tela correta
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const TelaGerenciarVinculos(),
-                  ),
-                );
-              },
-            ),
+            ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 32),
 
-          // Seção de Consultas e Relatórios
-          const Text(
-            'Consultas e Relatórios',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.indigo,
-            ),
-          ),
-          const Divider(),
-          Card(
-            child: ListTile(
-              leading: const Icon(
-                Icons.inventory_2_outlined,
-                color: Colors.indigo,
+          const Text('Ações de Gerenciamento', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
+          const SizedBox(height: 16),
+          GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1,
+            children: [
+              DashboardActionButton(
+                icon: Icons.add_business_outlined,
+                label: 'Projetos',
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TelaCadastroProjeto())),
               ),
-              title: const Text('Consultar Estoques de Projetos'),
-              subtitle: const Text('Veja o inventário atual de cada projeto'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const TelaListaProjetosAdmin(),
-                  ),
-                );
-              },
-            ),
-          ),
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.history_outlined, color: Colors.indigo),
-              title: const Text('Histórico de Equipamento'),
-              subtitle: const Text('Rastreie uma TAG específica'),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const TelaBuscaHistorico(),
-                  ),
-                );
-              },
-            ),
-          ),
-          Card(
-            child: ListTile(
-              leading: const Icon(
-                Icons.dynamic_feed_outlined,
-                color: Colors.indigo,
+              DashboardActionButton(
+                icon: Icons.add_moderator_outlined,
+                label: 'Equipamentos',
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TelaGerenciamentoEquipamentos())),
               ),
-              title: const Text('Histórico Geral de Movimentações'),
-              subtitle: const Text(
-                'Veja todas as entradas e saídas em tempo real',
+              DashboardActionButton(
+                icon: Icons.people_alt_outlined,
+                label: 'Vínculos',
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TelaGerenciarVinculos())),
               ),
-              onTap: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const TelaHistoricoGeral(),
-                  ),
-                );
-              },
-            ),
+            ],
+          ),
+           const SizedBox(height: 32),
+
+          const Text('Consultas e Relatórios', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
+          const SizedBox(height: 16),
+           GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1,
+            children: [
+              DashboardActionButton(
+                icon: Icons.inventory_2_outlined,
+                label: 'Estoques',
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TelaListaProjetosAdmin())),
+              ),
+               DashboardActionButton(
+                icon: Icons.history_outlined,
+                label: 'Rastrear TAG',
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TelaBuscaHistorico())),
+              ),
+               DashboardActionButton(
+                icon: Icons.dynamic_feed_outlined,
+                label: 'Histórico Geral',
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const TelaHistoricoGeral())),
+              ),
+            ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+
+// WIDGET REUTILIZÁVEL PARA OS CARDS DE ESTATÍSTICA
+class DashboardStatCard extends StatelessWidget {
+  final Stream<QuerySnapshot> stream;
+  final IconData icon;
+  final String label;
+  final Color color;
+
+  const DashboardStatCard({
+    super.key,
+    required this.stream,
+    required this.icon,
+    required this.label,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: StreamBuilder<QuerySnapshot>(
+          stream: stream,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)));
+            }
+            if (!snapshot.hasData) {
+              return const Center(child: Text('...'));
+            }
+            final int count = snapshot.data!.docs.length;
+
+            return Row(
+              children: [
+                Icon(icon, size: 32, color: color),
+                const SizedBox(width: 12),
+                // CORREÇÃO: Envolve a Column com um Expanded e um FittedBox
+                Expanded(
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.centerLeft,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          count.toString(),
+                          style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        Text(label, style: Theme.of(context).textTheme.bodySmall),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+
+// WIDGET REUTILIZÁVEL PARA OS BOTÕES DE AÇÃO
+class DashboardActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  const DashboardActionButton({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 36, color: Colors.indigo),
+            const SizedBox(height: 8),
+            Text(label, textAlign: TextAlign.center),
+          ],
+        ),
       ),
     );
   }

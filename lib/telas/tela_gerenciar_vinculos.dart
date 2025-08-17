@@ -10,60 +10,12 @@ class TelaGerenciarVinculos extends StatefulWidget {
   State<TelaGerenciarVinculos> createState() => _TelaGerenciarVinculosState();
 }
 
+// A variável _firestore foi removida desta classe
 class _TelaGerenciarVinculosState extends State<TelaGerenciarVinculos> {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
-  // Função para desvincular o usuário, usada por múltiplas abas
-  Future<void> _desvincularUsuario(String userId, String projectId) async {
-    bool confirmar =
-        await showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Confirmar Ação'),
-            content: const Text(
-              'Você tem certeza que deseja desvincular este usuário do projeto?',
-            ),
-            actions: [
-              TextButton(
-                child: const Text('Cancelar'),
-                onPressed: () => Navigator.of(context).pop(false),
-              ),
-              TextButton(
-                child: const Text(
-                  'Desvincular',
-                  style: TextStyle(color: Colors.red),
-                ),
-                onPressed: () => Navigator.of(context).pop(true),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-
-    if (!confirmar || !mounted) return;
-
-    try {
-      await _firestore.collection('usuarios').doc(userId).update({
-        'projetos_acesso': FieldValue.arrayRemove([projectId]),
-      });
-      await _firestore.collection('projetos').doc(projectId).update({
-        'usuarios_vinculados': FieldValue.arrayRemove([userId]),
-      });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Usuário desvinculado com sucesso!')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao desvincular: $e')));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Usamos um TabController para gerenciar as abas
     return DefaultTabController(
-      length: 3, // Temos 3 abas
+      length: 3,
       child: Scaffold(
         appBar: AppBar(
           title: const Text('Gerenciar Vínculos'),
@@ -80,14 +32,10 @@ class _TelaGerenciarVinculosState extends State<TelaGerenciarVinculos> {
             unselectedLabelColor: Colors.white70,
           ),
         ),
-        // O corpo da tela agora é uma TabBarView
         body: const TabBarView(
           children: [
-            // Conteúdo da Aba 1
             AbaVincularNovo(),
-            // Conteúdo da Aba 2
             AbaGerenciarPorProjeto(),
-            // Conteúdo da Aba 3
             AbaGerenciarPorUsuario(),
           ],
         ),
@@ -110,11 +58,13 @@ class _AbaVincularNovoState extends State<AbaVincularNovo> {
 
   Future<void> _vincularUsuarioAoProjeto() async {
     if (_selectedUserId == null || _selectedProjectId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor, selecione um usuário e um projeto.'),
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Por favor, selecione um usuário e um projeto.'),
+          ),
+        );
+      }
       return;
     }
     setState(() {
@@ -134,6 +84,7 @@ class _AbaVincularNovoState extends State<AbaVincularNovo> {
           .update({
             'usuarios_vinculados': FieldValue.arrayUnion([_selectedUserId]),
           });
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Usuário vinculado com sucesso!')),
@@ -144,15 +95,17 @@ class _AbaVincularNovoState extends State<AbaVincularNovo> {
         });
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(
           context,
         ).showSnackBar(SnackBar(content: Text('Erro ao vincular: $e')));
+      }
     } finally {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _isLoading = false;
         });
+      }
     }
   }
 
@@ -169,8 +122,9 @@ class _AbaVincularNovoState extends State<AbaVincularNovo> {
                 .where('funcao', isEqualTo: 'cliente')
                 .snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData)
+              if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
+              }
               final userItems = snapshot.data!.docs
                   .map(
                     (doc) => DropdownMenuItem<String>(
@@ -200,8 +154,9 @@ class _AbaVincularNovoState extends State<AbaVincularNovo> {
                 .collection('projetos')
                 .snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData)
+              if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
+              }
               final projectItems = snapshot.data!.docs
                   .map(
                     (doc) => DropdownMenuItem<String>(
@@ -254,10 +209,55 @@ class _AbaGerenciarPorProjetoState extends State<AbaGerenciarPorProjeto> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<void> _desvincularUsuario(String userId, String projectId) async {
-    // ... (A lógica de desvincular está na classe principal do State)
-    final parentState = context
-        .findAncestorStateOfType<_TelaGerenciarVinculosState>();
-    await parentState?._desvincularUsuario(userId, projectId);
+    bool confirmar =
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Confirmar Ação'),
+            content: const Text(
+              'Você tem certeza que deseja desvincular este usuário do projeto?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text(
+                  'Desvincular',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirmar) {
+      return;
+    }
+
+    try {
+      await _firestore.collection('usuarios').doc(userId).update({
+        'projetos_acesso': FieldValue.arrayRemove([projectId]),
+      });
+      await _firestore.collection('projetos').doc(projectId).update({
+        'usuarios_vinculados': FieldValue.arrayRemove([userId]),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Usuário desvinculado com sucesso!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erro ao desvincular: $e')));
+      }
+    }
   }
 
   @override
@@ -272,8 +272,9 @@ class _AbaGerenciarPorProjetoState extends State<AbaGerenciarPorProjeto> {
                 .orderBy('nomeProjeto')
                 .snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData)
+              if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
+              }
               final projectItems = snapshot.data!.docs
                   .map(
                     (doc) => DropdownMenuItem<String>(
@@ -309,8 +310,9 @@ class _AbaGerenciarPorProjetoState extends State<AbaGerenciarPorProjeto> {
                         .doc(_projetoSelecionadoId)
                         .snapshots(),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData)
+                      if (!snapshot.hasData) {
                         return const Center(child: CircularProgressIndicator());
+                      }
                       final List<dynamic> userIds =
                           (snapshot.data!.data()
                               as Map<
@@ -318,12 +320,13 @@ class _AbaGerenciarPorProjetoState extends State<AbaGerenciarPorProjeto> {
                                 dynamic
                               >?)?['usuarios_vinculados'] ??
                           [];
-                      if (userIds.isEmpty)
+                      if (userIds.isEmpty) {
                         return const Center(
                           child: Text(
                             'Nenhum usuário vinculado a este projeto.',
                           ),
                         );
+                      }
                       return ListView.builder(
                         itemCount: userIds.length,
                         itemBuilder: (context, index) {
@@ -334,10 +337,11 @@ class _AbaGerenciarPorProjetoState extends State<AbaGerenciarPorProjeto> {
                                 .doc(userId)
                                 .get(),
                             builder: (context, userSnapshot) {
-                              if (!userSnapshot.hasData)
+                              if (!userSnapshot.hasData) {
                                 return const ListTile(
                                   title: Text('Carregando...'),
                                 );
+                              }
                               final userName =
                                   (userSnapshot.data?.data()
                                       as Map<String, dynamic>?)?['nome'] ??
@@ -383,9 +387,55 @@ class _AbaGerenciarPorUsuarioState extends State<AbaGerenciarPorUsuario> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<void> _desvincularUsuario(String userId, String projectId) async {
-    final parentState = context
-        .findAncestorStateOfType<_TelaGerenciarVinculosState>();
-    await parentState?._desvincularUsuario(userId, projectId);
+    bool confirmar =
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Confirmar Ação'),
+            content: const Text(
+              'Você tem certeza que deseja desvincular este usuário do projeto?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text(
+                  'Desvincular',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (!confirmar) {
+      return;
+    }
+
+    try {
+      await _firestore.collection('usuarios').doc(userId).update({
+        'projetos_acesso': FieldValue.arrayRemove([projectId]),
+      });
+      await _firestore.collection('projetos').doc(projectId).update({
+        'usuarios_vinculados': FieldValue.arrayRemove([userId]),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Usuário desvinculado com sucesso!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erro ao desvincular: $e')));
+      }
+    }
   }
 
   @override
@@ -400,8 +450,9 @@ class _AbaGerenciarPorUsuarioState extends State<AbaGerenciarPorUsuario> {
                 .where('funcao', isEqualTo: 'cliente')
                 .snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData)
+              if (!snapshot.hasData) {
                 return const Center(child: CircularProgressIndicator());
+              }
               final userItems = snapshot.data!.docs
                   .map(
                     (doc) => DropdownMenuItem<String>(
@@ -436,18 +487,20 @@ class _AbaGerenciarPorUsuarioState extends State<AbaGerenciarPorUsuario> {
                         .doc(_usuarioSelecionadoId)
                         .snapshots(),
                     builder: (context, snapshot) {
-                      if (!snapshot.hasData)
+                      if (!snapshot.hasData) {
                         return const Center(child: CircularProgressIndicator());
+                      }
                       final List<dynamic> projectIds =
                           (snapshot.data!.data()
                               as Map<String, dynamic>?)?['projetos_acesso'] ??
                           [];
-                      if (projectIds.isEmpty)
+                      if (projectIds.isEmpty) {
                         return const Center(
                           child: Text(
                             'Este usuário não está vinculado a nenhum projeto.',
                           ),
                         );
+                      }
                       return ListView.builder(
                         itemCount: projectIds.length,
                         itemBuilder: (context, index) {
@@ -458,10 +511,11 @@ class _AbaGerenciarPorUsuarioState extends State<AbaGerenciarPorUsuario> {
                                 .doc(projectId)
                                 .get(),
                             builder: (context, projectSnapshot) {
-                              if (!projectSnapshot.hasData)
+                              if (!projectSnapshot.hasData) {
                                 return const ListTile(
                                   title: Text('Carregando...'),
                                 );
+                              }
                               final projectName =
                                   (projectSnapshot.data?.data()
                                       as Map<
