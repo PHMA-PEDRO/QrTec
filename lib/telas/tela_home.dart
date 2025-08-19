@@ -95,7 +95,7 @@ class _TelaHomeState extends State<TelaHome> {
             .collection('projetos')
             .doc(id)
             .get();
-        if (projetoDoc.exists) {
+        if (projetoDoc.exists && (projetoDoc.data()?['status'] == 'ativo')) {
           projetosTemp.add(
             Projeto(
               id: projetoDoc.id,

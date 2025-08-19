@@ -45,6 +45,7 @@ class TelaAdminDashboard extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
+          // --- SEÇÃO DE ESTATÍSTICAS ---
           const Text('Visão Geral', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
           const SizedBox(height: 16),
           GridView.count(
@@ -56,9 +57,10 @@ class TelaAdminDashboard extends StatelessWidget {
             childAspectRatio: 2.5,
             children: [
               DashboardStatCard(
-                stream: firestore.collection('projetos').snapshots(),
+                // AJUSTE AQUI: Adicionado filtro para contar apenas projetos ativos
+                stream: firestore.collection('projetos').where('status', isEqualTo: 'ativo').snapshots(),
                 icon: Icons.business_center,
-                label: 'Projetos',
+                label: 'Projetos Ativos',
                 color: Colors.blue.shade700,
               ),
               DashboardStatCard(
@@ -83,6 +85,7 @@ class TelaAdminDashboard extends StatelessWidget {
           ),
           const SizedBox(height: 32),
 
+          // --- SEÇÃO DE AÇÕES DE GERENCIAMENTO ---
           const Text('Ações de Gerenciamento', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
           const SizedBox(height: 16),
           GridView.count(
@@ -112,6 +115,7 @@ class TelaAdminDashboard extends StatelessWidget {
           ),
            const SizedBox(height: 32),
 
+          // --- SEÇÃO DE AÇÕES DE CONSULTA ---
           const Text('Consultas e Relatórios', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.indigo)),
           const SizedBox(height: 16),
            GridView.count(
@@ -183,7 +187,6 @@ class DashboardStatCard extends StatelessWidget {
               children: [
                 Icon(icon, size: 32, color: color),
                 const SizedBox(width: 12),
-                // CORREÇÃO: Envolve a Column com um Expanded e um FittedBox
                 Expanded(
                   child: FittedBox(
                     fit: BoxFit.scaleDown,

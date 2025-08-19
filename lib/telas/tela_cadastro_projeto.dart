@@ -35,6 +35,7 @@ class _TelaCadastroProjetoState extends State<TelaCadastroProjeto> {
         'dataCriacao': Timestamp.now(),
         'criadoPor': user.uid,
         'usuarios_vinculados': [],
+        'status': 'ativo',
       });
 
       if (mounted) {

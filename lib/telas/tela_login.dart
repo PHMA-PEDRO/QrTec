@@ -17,16 +17,14 @@ class _TelaLoginState extends State<TelaLogin> {
   final _emailController = TextEditingController();
   final _senhaController = TextEditingController();
   final _authService = AuthService();
-
   bool _isLoading = false;
   bool _senhaOculta = true;
 
   Future<void> _fazerLogin() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-    setState(() { _isLoading = true; });
-
+    if (!_formKey.currentState!.validate()) return;
+    setState(() {
+      _isLoading = true;
+    });
     try {
       await _authService.signInWithEmailAndPassword(
         context: context,
@@ -36,21 +34,67 @@ class _TelaLoginState extends State<TelaLogin> {
     } on FirebaseAuthException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro no login: ${e.message ?? "Ocorreu um erro."}')),
+          SnackBar(
+            content: Text('Erro no login: ${e.message ?? "Ocorreu um erro."}'),
+          ),
         );
       }
     } finally {
       if (mounted) {
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
       }
     }
+  }
+
+  void _mostrarDialogResetSenha() {
+    final emailResetController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Redefinir Senha'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Digite seu e-mail para receber o link de redefinição.'),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailResetController,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(
+                labelText: 'E-mail',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (emailResetController.text.isNotEmpty && mounted) {
+                await _authService.sendPasswordResetEmail(
+                  context: context,
+                  email: emailResetController.text.trim(),
+                );
+                if (mounted) Navigator.of(context).pop();
+              }
+            },
+            child: const Text('Enviar'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        // Fundo com gradiente
         decoration: BoxDecoration(
           gradient: LinearGradient(
             colors: [Colors.indigo.shade800, Colors.deepPurple.shade600],
@@ -65,7 +109,6 @@ class _TelaLoginState extends State<TelaLogin> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo/Ícone do App
                   const Icon(
                     Icons.qr_code_scanner_rounded,
                     size: 80,
@@ -87,11 +130,11 @@ class _TelaLoginState extends State<TelaLogin> {
                     style: TextStyle(color: Colors.white70, fontSize: 16),
                   ),
                   const SizedBox(height: 48),
-
-                  // Card do Formulário
                   Card(
                     elevation: 8,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
                     child: Padding(
                       padding: const EdgeInsets.all(24.0),
                       child: Form(
@@ -106,7 +149,9 @@ class _TelaLoginState extends State<TelaLogin> {
                                 border: OutlineInputBorder(),
                               ),
                               keyboardType: TextInputType.emailAddress,
-                              validator: (value) => value!.isEmpty ? 'Por favor, insira o e-mail' : null,
+                              validator: (value) => value!.isEmpty
+                                  ? 'Por favor, insira o e-mail'
+                                  : null,
                             ),
                             const SizedBox(height: 16),
                             TextFormField(
@@ -117,15 +162,28 @@ class _TelaLoginState extends State<TelaLogin> {
                                 prefixIcon: const Icon(Icons.lock_outline),
                                 border: const OutlineInputBorder(),
                                 suffixIcon: IconButton(
-                                  icon: Icon(_senhaOculta ? Icons.visibility_off : Icons.visibility),
-                                  onPressed: () {
-                                    setState(() { _senhaOculta = !_senhaOculta; });
-                                  },
+                                  icon: Icon(
+                                    _senhaOculta
+                                        ? Icons.visibility_off
+                                        : Icons.visibility,
+                                  ),
+                                  onPressed: () => setState(() {
+                                    _senhaOculta = !_senhaOculta;
+                                  }),
                                 ),
                               ),
-                              validator: (value) => value!.isEmpty ? 'Por favor, insira a senha' : null,
+                              validator: (value) => value!.isEmpty
+                                  ? 'Por favor, insira a senha'
+                                  : null,
                             ),
-                            const SizedBox(height: 24),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: _mostrarDialogResetSenha,
+                                child: const Text('Esqueci minha senha'),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
                             _isLoading
                                 ? const CircularProgressIndicator()
                                 : SizedBox(
@@ -133,12 +191,21 @@ class _TelaLoginState extends State<TelaLogin> {
                                     child: ElevatedButton(
                                       onPressed: _fazerLogin,
                                       style: ElevatedButton.styleFrom(
-                                        padding: const EdgeInsets.symmetric(vertical: 16),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
                                         backgroundColor: Colors.indigo,
                                         foregroundColor: Colors.white,
                                       ),
-                                      child: const Text('ENTRAR', style: TextStyle(fontSize: 16)),
+                                      child: const Text(
+                                        'ENTRAR',
+                                        style: TextStyle(fontSize: 16),
+                                      ),
                                     ),
                                   ),
                           ],
@@ -148,9 +215,12 @@ class _TelaLoginState extends State<TelaLogin> {
                   ),
                   const SizedBox(height: 24),
                   TextButton(
-                    onPressed: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (context) => const TelaRegistro()));
-                    },
+                    onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const TelaRegistro(),
+                      ),
+                    ),
                     child: const Text(
                       'Ainda não tem uma conta? Cadastre-se',
                       style: TextStyle(color: Colors.white70),

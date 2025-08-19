@@ -34,6 +34,7 @@ class _TelaRegistroState extends State<TelaRegistro> {
         email: _emailController.text.trim(),
         password: _senhaController.text.trim(),
       );
+      // A mensagem de sucesso e a navegação já são feitas dentro do AuthService
     } on FirebaseAuthException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

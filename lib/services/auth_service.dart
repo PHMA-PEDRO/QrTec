@@ -3,42 +3,32 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:qrtec_final/telas/tela_admin_dashboard.dart';
-import 'package:qrtec_final/telas/tela_home.dart';
+
+// Imports para tela_admin_dashboard e tela_home foram removidos
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Função para fazer Login
   Future<void> signInWithEmailAndPassword({
     required BuildContext context,
     required String email,
     required String password,
   }) async {
-    final userCredential = await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    
-    if (context.mounted) {
-      await _redirectUserBasedOnRole(context, userCredential.user!);
-    }
+    await _auth.signInWithEmailAndPassword(email: email, password: password);
+    // O AuthGate agora cuida do redirecionamento, então não fazemos mais nada aqui.
   }
 
-  // Função para Registrar um novo usuário
   Future<void> createUserWithEmailAndPassword({
     required BuildContext context,
     required String nome,
     required String email,
     required String password,
   }) async {
-    final userCredential = await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-    
+    final userCredential = await _auth.createUserWithEmailAndPassword(email: email, password: password);
     final user = userCredential.user!;
+
+    await user.sendEmailVerification();
 
     await _firestore.collection('usuarios').doc(user.uid).set({
       'uid': user.uid,
@@ -51,40 +41,21 @@ class AuthService {
 
     if (context.mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Usuário registrado com sucesso! Faça o login.')),
+        const SnackBar(content: Text('Usuário registrado! Um link de verificação foi enviado para o seu e-mail.')),
       );
       Navigator.pop(context);
     }
   }
 
-  // Função interna para checar a função e redirecionar
-  Future<void> _redirectUserBasedOnRole(BuildContext context, User user) async {
-    final docSnapshot = await _firestore.collection('usuarios').doc(user.uid).get();
-    
+  Future<void> sendPasswordResetEmail({
+    required BuildContext context,
+    required String email,
+  }) async {
+    await _auth.sendPasswordResetEmail(email: email);
     if (context.mounted) {
-      if (docSnapshot.exists) {
-        final String funcao = docSnapshot.data()?['funcao'] ?? 'cliente';
-        
-        if (funcao == 'admin') {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const TelaAdminDashboard()),
-            (route) => false,
-          );
-        } else {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const TelaHome()),
-            (route) => false,
-          );
-        }
-      } else {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const TelaHome()),
-          (route) => false,
-        );
-      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Se o e-mail estiver cadastrado, um link para redefinir a senha foi enviado.')),
+      );
     }
   }
 }

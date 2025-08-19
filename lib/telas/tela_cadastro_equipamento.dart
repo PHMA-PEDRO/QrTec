@@ -42,7 +42,6 @@ class TelaGerenciamentoEquipamentos extends StatelessWidget {
 // ABA 1: CADASTRAR NOVO EQUIPAMENTO
 class AbaCadastrarNovo extends StatefulWidget {
   const AbaCadastrarNovo({super.key});
-
   @override
   State<AbaCadastrarNovo> createState() => _AbaCadastrarNovoState();
 }
@@ -91,6 +90,7 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
                   ),
                 ),
                 pw.SizedBox(height: 10),
+                // CORREÇÃO: Removido o 'const' daqui para resolver o erro
                 pw.Text(nome, style: pw.TextStyle(fontSize: 18)),
                 pw.Text(
                   descricao,
@@ -110,8 +110,7 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
     final file = File("${output.path}/etiqueta_qr_$tag.pdf");
     await file.writeAsBytes(await pdf.save());
     final xfile = XFile(file.path);
-
-    // CORREÇÃO: Usando a classe correta 'Share' em vez de 'SharePlus'
+    // CORREÇÃO: Sintaxe correta do Share
     await Share.shareXFiles([xfile], text: 'Etiqueta para o equipamento $tag');
   }
 
@@ -151,9 +150,7 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
           ElevatedButton.icon(
             icon: const Icon(Icons.share),
             label: const Text('Compartilhar PDF'),
-            onPressed: () {
-              _gerarECompartilharPdf(tag, nome, descricao);
-            },
+            onPressed: () => _gerarECompartilharPdf(tag, nome, descricao),
           ),
         ],
       ),
@@ -185,6 +182,7 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
         'dataCadastro': Timestamp.now(),
         'fotos': [],
         'status_operacional': 'Ativo',
+        'observacao_inativacao': '',
       });
       if (mounted) {
         _mostrarDialogSucesso(tag, nome, descricao);
@@ -279,6 +277,7 @@ class AbaGerenciarExistentes extends StatefulWidget {
 
 class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  String _textoBusca = '';
 
   Future<void> _gerarECompartilharPdf(
     String tag,
@@ -316,6 +315,7 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
                   ),
                 ),
                 pw.SizedBox(height: 10),
+                // CORREÇÃO: Removido o 'const' daqui para resolver o erro
                 pw.Text(nome, style: pw.TextStyle(fontSize: 18)),
                 pw.Text(
                   descricao,
@@ -334,7 +334,7 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
     final file = File("${output.path}/etiqueta_qr_$tag.pdf");
     await file.writeAsBytes(await pdf.save());
     final xfile = XFile(file.path);
-    // CORREÇÃO: Usando a classe correta 'Share' em vez de 'SharePlus'
+    // CORREÇÃO: Sintaxe correta do Share
     await Share.shareXFiles([xfile], text: 'Etiqueta para o equipamento $tag');
   }
 
@@ -444,65 +444,160 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
     }
   }
 
+  Future<void> _reativarEquipamento(String tag) async {
+    final bool? confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmar Ação'),
+        content: const Text('Deseja reativar este equipamento?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text(
+              'Reativar',
+              style: TextStyle(color: Colors.green),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true || !mounted) return;
+
+    try {
+      await _firestore.collection('equipamentos').doc(tag).update({
+        'status_operacional': 'Ativo',
+        'observacao_inativacao': '',
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Equipamento $tag reativado com sucesso!')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erro ao reativar: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return StreamBuilder<QuerySnapshot>(
-      stream: _firestore.collection('equipamentos').orderBy('tag').snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.data!.docs.isEmpty) {
-          return const Center(child: Text('Nenhum equipamento cadastrado.'));
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.all(8.0),
-          itemCount: snapshot.data!.docs.length,
-          itemBuilder: (context, index) {
-            final doc = snapshot.data!.docs[index];
-            final dados = doc.data() as Map<String, dynamic>;
-            final String status = dados['status_operacional'] ?? 'Ativo';
-            final bool isAtivo = status == 'Ativo';
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: TextField(
+            decoration: const InputDecoration(
+              labelText: 'Buscar por TAG ou Nome...',
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(),
+            ),
+            onChanged: (value) {
+              setState(() {
+                _textoBusca = value;
+              });
+            },
+          ),
+        ),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: _firestore
+                .collection('equipamentos')
+                .orderBy('tag')
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Text('Nenhum equipamento cadastrado.'),
+                );
+              }
 
-            return Card(
-              color: isAtivo ? Colors.white : Colors.grey.shade300,
-              child: ListTile(
-                leading: Icon(
-                  Icons.computer,
-                  color: isAtivo ? Colors.indigo : Colors.grey,
-                ),
-                title: Text(dados['tag'] ?? ''),
-                subtitle: Text(dados['nome'] ?? ''),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Chip(
-                      label: Text(status),
-                      backgroundColor: isAtivo
-                          ? Colors.green.shade100
-                          : Colors.red.shade100,
-                    ),
-                    if (isAtivo)
-                      IconButton(
-                        icon: const Icon(
-                          Icons.power_settings_new,
-                          color: Colors.red,
-                        ),
-                        tooltip: 'Inativar',
-                        onPressed: () => _mostrarDialogInativar(dados['tag']),
+              final todosEquipamentos = snapshot.data!.docs;
+              final equipamentosFiltrados = todosEquipamentos.where((doc) {
+                final dados = doc.data() as Map<String, dynamic>;
+                final String tag = dados['tag']?.toLowerCase() ?? '';
+                final String nome = dados['nome']?.toLowerCase() ?? '';
+                final String busca = _textoBusca.toLowerCase();
+                return tag.contains(busca) || nome.contains(busca);
+              }).toList();
+
+              if (equipamentosFiltrados.isEmpty) {
+                return const Center(
+                  child: Text('Nenhum equipamento encontrado.'),
+                );
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.all(8.0),
+                itemCount: equipamentosFiltrados.length,
+                itemBuilder: (context, index) {
+                  final doc = equipamentosFiltrados[index];
+                  final dados = doc.data() as Map<String, dynamic>;
+                  final String status = dados['status_operacional'] ?? 'Ativo';
+                  final bool isAtivo = status == 'Ativo';
+
+                  return Card(
+                    color: isAtivo ? Colors.white : Colors.grey.shade300,
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.computer,
+                        color: isAtivo ? Colors.indigo : Colors.grey,
                       ),
-                  ],
-                ),
-                onTap: () => _mostrarDialogEquipamento(
-                  dados['tag'],
-                  dados['nome'],
-                  dados['descricao'],
-                ),
-              ),
-            );
-          },
-        );
-      },
+                      title: Text(dados['tag'] ?? ''),
+                      subtitle: Text(dados['nome'] ?? ''),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Chip(
+                            label: Text(status),
+                            backgroundColor: isAtivo
+                                ? Colors.green.shade100
+                                : Colors.red.shade100,
+                          ),
+                          isAtivo
+                              ? IconButton(
+                                  icon: const Icon(
+                                    Icons.power_settings_new,
+                                    color: Colors.red,
+                                  ),
+                                  tooltip: 'Inativar',
+                                  onPressed: () =>
+                                      _mostrarDialogInativar(dados['tag']),
+                                )
+                              : IconButton(
+                                  icon: const Icon(
+                                    Icons.power_settings_new,
+                                    color: Colors.green,
+                                  ),
+                                  tooltip: 'Reativar',
+                                  onPressed: () =>
+                                      _reativarEquipamento(dados['tag']),
+                                ),
+                        ],
+                      ),
+                      onTap: () => _mostrarDialogEquipamento(
+                        dados['tag'],
+                        dados['nome'],
+                        dados['descricao'],
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+      ],
     );
   }
 }
