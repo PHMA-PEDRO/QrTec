@@ -41,46 +41,46 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyAiXpWDBS__akI-8Ft1nJLa1pncn__c3fY',
-    appId: '1:666278182382:web:e329c6c7ace58937fa22ff',
-    messagingSenderId: '666278182382',
-    projectId: 'qrtec-final-app',
-    authDomain: 'qrtec-final-app.firebaseapp.com',
-    storageBucket: 'qrtec-final-app.firebasestorage.app',
+    apiKey: 'AIzaSyBuqHdb0extEmiICmkchdAP1Zh9UvG2m0I',
+    appId: '1:884934582474:web:6d62dd19684994fd549433',
+    messagingSenderId: '884934582474',
+    projectId: 'qrtec-inventory-app-654f7',
+    authDomain: 'qrtec-inventory-app-654f7.firebaseapp.com',
+    storageBucket: 'qrtec-inventory-app-654f7.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCySidz0OoibrNDzdzeNsQxA5p5xdh5fZo',
-    appId: '1:666278182382:android:c8597196c934c2a6fa22ff',
-    messagingSenderId: '666278182382',
-    projectId: 'qrtec-final-app',
-    storageBucket: 'qrtec-final-app.firebasestorage.app',
+    apiKey: 'AIzaSyC6Qdbf2WA_cHTlOrOlAh3r_Tii1uTwaG4',
+    appId: '1:884934582474:android:14fb410aa686c2f3549433',
+    messagingSenderId: '884934582474',
+    projectId: 'qrtec-inventory-app-654f7',
+    storageBucket: 'qrtec-inventory-app-654f7.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyBiuCoM9Mz74ax11DVhMl8QzdXB_QuKsYc',
-    appId: '1:666278182382:ios:d6eec77d47bf5a67fa22ff',
-    messagingSenderId: '666278182382',
-    projectId: 'qrtec-final-app',
-    storageBucket: 'qrtec-final-app.firebasestorage.app',
+    apiKey: 'AIzaSyCcOR3_N0RR0W-QTedjXR0E4AJ6v-4Z5b0',
+    appId: '1:884934582474:ios:9bfc9c61179dc863549433',
+    messagingSenderId: '884934582474',
+    projectId: 'qrtec-inventory-app-654f7',
+    storageBucket: 'qrtec-inventory-app-654f7.firebasestorage.app',
     iosBundleId: 'com.example.qrtecFinal',
   );
 
   static const FirebaseOptions macos = FirebaseOptions(
-    apiKey: 'AIzaSyBiuCoM9Mz74ax11DVhMl8QzdXB_QuKsYc',
-    appId: '1:666278182382:ios:d6eec77d47bf5a67fa22ff',
-    messagingSenderId: '666278182382',
-    projectId: 'qrtec-final-app',
-    storageBucket: 'qrtec-final-app.firebasestorage.app',
+    apiKey: 'AIzaSyCcOR3_N0RR0W-QTedjXR0E4AJ6v-4Z5b0',
+    appId: '1:884934582474:ios:9bfc9c61179dc863549433',
+    messagingSenderId: '884934582474',
+    projectId: 'qrtec-inventory-app-654f7',
+    storageBucket: 'qrtec-inventory-app-654f7.firebasestorage.app',
     iosBundleId: 'com.example.qrtecFinal',
   );
 
   static const FirebaseOptions windows = FirebaseOptions(
-    apiKey: 'AIzaSyAiXpWDBS__akI-8Ft1nJLa1pncn__c3fY',
-    appId: '1:666278182382:web:fe320fb8accda062fa22ff',
-    messagingSenderId: '666278182382',
-    projectId: 'qrtec-final-app',
-    authDomain: 'qrtec-final-app.firebaseapp.com',
-    storageBucket: 'qrtec-final-app.firebasestorage.app',
+    apiKey: 'AIzaSyBuqHdb0extEmiICmkchdAP1Zh9UvG2m0I',
+    appId: '1:884934582474:web:d63f22b9ce89f683549433',
+    messagingSenderId: '884934582474',
+    projectId: 'qrtec-inventory-app-654f7',
+    authDomain: 'qrtec-inventory-app-654f7.firebaseapp.com',
+    storageBucket: 'qrtec-inventory-app-654f7.firebasestorage.app',
   );
 }

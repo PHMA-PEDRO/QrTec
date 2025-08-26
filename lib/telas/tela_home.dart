@@ -1,6 +1,3 @@
-// lib/telas/tela_home.dart
-// VERSÃO AJUSTADA: Fluxo de foto obrigatória ANTES do scan.
-
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -9,10 +6,13 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:qrtec_final/telas/tela_estoque.dart';
 import 'package:qrtec_final/telas/tela_login.dart';
 import 'package:qrtec_final/telas/tela_scanner.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+// Modelo simples para guardar os dados do projeto
 class Projeto {
   final String id;
   final String nome;
@@ -35,8 +35,7 @@ class _TelaHomeState extends State<TelaHome> {
   bool _isLoading = false;
   List<Projeto> _listaProjetos = [];
   String? _projetoSelecionadoId;
-  bool _carregandoProjetos = true;
-
+  bool _carregandoDadosIniciais = true;
   File? _imagemSelecionada;
 
   @override
@@ -45,9 +44,19 @@ class _TelaHomeState extends State<TelaHome> {
     _buscarDadosIniciais();
   }
 
+  @override
+  void dispose() {
+    _responsavelController.dispose();
+    super.dispose();
+  }
+
   Future<void> _buscarDadosIniciais() async {
     await _buscarNomeUsuario();
-    await _buscarProjetosDoUsuario();
+    if (mounted) {
+      setState(() {
+        _carregandoDadosIniciais = false;
+      });
+    }
   }
 
   Future<void> _buscarNomeUsuario() async {
@@ -55,70 +64,46 @@ class _TelaHomeState extends State<TelaHome> {
     if (user != null) {
       final doc = await _firestore.collection('usuarios').doc(user.uid).get();
       if (doc.exists && mounted) {
+        final nome = doc.data()?['nome'] ?? 'Usuário';
+        final projetosAcesso = List<String>.from(
+          doc.data()?['projetos_acesso'] ?? [],
+        );
         setState(() {
-          _nomeUsuario = doc.data()?['nome'] ?? 'Usuário';
+          _nomeUsuario = nome;
+          _responsavelController.text = nome;
         });
+        await _buscarProjetosDoUsuario(projetosAcesso);
       }
     }
   }
 
-  Future<void> _buscarProjetosDoUsuario() async {
-    setState(() {
-      _carregandoProjetos = true;
-    });
-    final user = _auth.currentUser;
-    if (user == null) {
+  Future<void> _buscarProjetosDoUsuario(List<String> projetosIds) async {
+    if (projetosIds.isEmpty) {
+      if (mounted) setState(() => _listaProjetos = []);
       return;
     }
-    try {
-      final userDoc = await _firestore
-          .collection('usuarios')
-          .doc(user.uid)
-          .get();
-      if (!userDoc.exists) {
-        return;
-      }
-      final List<dynamic> projetosIds =
-          userDoc.data()?['projetos_acesso'] ?? [];
-      if (projetosIds.isEmpty) {
-        if (mounted) {
-          setState(() {
-            _listaProjetos = [];
-          });
-        }
-        return;
-      }
 
-      List<Projeto> projetosTemp = [];
-      for (String id in projetosIds) {
-        final projetoDoc = await _firestore
-            .collection('projetos')
-            .doc(id)
-            .get();
-        if (projetoDoc.exists && (projetoDoc.data()?['status'] == 'ativo')) {
-          projetosTemp.add(
-            Projeto(
-              id: projetoDoc.id,
-              nome: projetoDoc.data()?['nomeProjeto'] ?? 'Nome indisponível',
-            ),
-          );
-        }
-      }
-      if (mounted) {
-        setState(() {
-          _listaProjetos = projetosTemp;
-        });
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _carregandoProjetos = false;
-        });
+    List<Projeto> projetosTemp = [];
+    for (String id in projetosIds) {
+      final projetoDoc = await _firestore.collection('projetos').doc(id).get();
+      if (projetoDoc.exists && (projetoDoc.data()?['status'] == 'ativo')) {
+        projetosTemp.add(
+          Projeto(
+            id: projetoDoc.id,
+            nome: projetoDoc.data()?['nomeProjeto'] ?? 'Nome indisponível',
+          ),
+        );
       }
     }
+    if (mounted) {
+      setState(() => _listaProjetos = projetosTemp);
+    }
+    await _carregarPreferenciaDeProjeto();
   }
 
   Future<void> _fazerLogout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('ultimo_projeto_id');
     await _auth.signOut();
     if (mounted) {
       Navigator.pushAndRemoveUntil(
@@ -129,17 +114,40 @@ class _TelaHomeState extends State<TelaHome> {
     }
   }
 
-  Future<void> _capturarFoto() async {
-    final ImagePicker picker = ImagePicker();
-    final XFile? imagem = await picker.pickImage(
-      source: ImageSource.camera,
-      imageQuality: 80,
-    );
+  Future<void> _carregarPreferenciaDeProjeto() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ultimoId = prefs.getString('ultimo_projeto_id');
+    if (ultimoId != null && _listaProjetos.any((p) => p.id == ultimoId)) {
+      if (mounted) {
+        setState(() {
+          _projetoSelecionadoId = ultimoId;
+        });
+      }
+    }
+  }
 
-    if (imagem != null) {
-      setState(() {
-        _imagemSelecionada = File(imagem.path);
-      });
+  Future<void> _salvarPreferenciaDeProjeto(String? projectId) async {
+    if (projectId == null) return;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('ultimo_projeto_id', projectId);
+  }
+
+  Future<void> _capturarFoto() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? imagem = await picker.pickImage(
+        source: ImageSource.camera,
+        imageQuality: 80,
+      );
+      if (imagem != null && mounted) {
+        setState(() => _imagemSelecionada = File(imagem.path));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao usar a câmera: ${e.toString()}')),
+        );
+      }
     }
   }
 
@@ -150,19 +158,60 @@ class _TelaHomeState extends State<TelaHome> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            'Preencha o responsável, tire a foto e selecione um projeto.',
+            'Selecione o projeto, tire a foto e confirme o responsável.',
           ),
         ),
       );
       return;
     }
 
-    if (_isLoading) {
+    var status = await Permission.location.status;
+    if (status.isDenied) {
+      status = await Permission.location.request();
+    }
+    if (status.isPermanentlyDenied) {
+      if (mounted) {
+        await showDialog(
+          context: context,
+          builder: (BuildContext context) => AlertDialog(
+            title: const Text('Permissão de Localização Necessária'),
+            content: const Text(
+              'Para registrar a movimentação, o aplicativo precisa de acesso à sua localização. Por favor, habilite a permissão nas configurações do seu dispositivo.',
+            ),
+            actions: <Widget>[
+              TextButton(
+                child: const Text('Cancelar'),
+                onPressed: () => Navigator.of(context).pop(),
+              ),
+              TextButton(
+                child: const Text('Abrir Configurações'),
+                onPressed: () {
+                  openAppSettings();
+                  Navigator.of(context).pop();
+                },
+              ),
+            ],
+          ),
+        );
+      }
       return;
     }
-    setState(() {
-      _isLoading = true;
-    });
+
+    if (!status.isGranted) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'A permissão de localização é obrigatória para continuar.',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    if (_isLoading) return;
+    setState(() => _isLoading = true);
 
     try {
       final String? qrCode = await Navigator.push<String>(
@@ -171,32 +220,21 @@ class _TelaHomeState extends State<TelaHome> {
       );
 
       if (qrCode != null) {
-        bool servicoHabilitado = await Geolocator.isLocationServiceEnabled();
-        if (!servicoHabilitado) {
-          throw Exception('Serviço de localização desabilitado.');
-        }
-
-        LocationPermission permissao = await Geolocator.checkPermission();
-        if (permissao == LocationPermission.denied) {
-          permissao = await Geolocator.requestPermission();
-          if (permissao == LocationPermission.denied) {
-            throw Exception('Permissão de localização negada.');
-          }
-        }
-        if (permissao == LocationPermission.deniedForever) {
-          throw Exception('Permissão de localização negada permanentemente.');
-        }
-
         Position position = await Geolocator.getCurrentPosition();
-        List<Placemark> placemarks = await placemarkFromCoordinates(
-          position.latitude,
-          position.longitude,
-        );
-        String endereco = 'Localização não encontrada';
-        if (placemarks.isNotEmpty) {
-          Placemark place = placemarks.first;
-          endereco =
-              "${place.street}, ${place.subLocality}, ${place.locality} - ${place.administrativeArea}";
+
+        String enderecoAproximado = 'Endereço não encontrado';
+        try {
+          List<Placemark> placemarks = await placemarkFromCoordinates(
+            position.latitude,
+            position.longitude,
+          );
+          if (placemarks.isNotEmpty) {
+            Placemark place = placemarks.first;
+            enderecoAproximado =
+                "${place.street ?? 'Rua desconhecida'} - ${place.subLocality ?? 'Bairro desconhecido'}, ${place.locality ?? ''} - ${place.administrativeArea ?? ''}, CEP: ${place.postalCode ?? ''}";
+          }
+        } catch (e) {
+          enderecoAproximado = "Falha ao obter endereço";
         }
 
         final String nomeArquivo =
@@ -220,7 +258,8 @@ class _TelaHomeState extends State<TelaHome> {
           'tipo': tipo,
           'timestamp': FieldValue.serverTimestamp(),
           'userId': userId,
-          'localizacao': endereco,
+          'localizacao': enderecoAproximado,
+          'coordenadas': GeoPoint(position.latitude, position.longitude),
           'projetoId': _projetoSelecionadoId,
           'nomeProjeto': nomeProjetoSelecionado,
           'fotoUrl': fotoUrl,
@@ -235,7 +274,8 @@ class _TelaHomeState extends State<TelaHome> {
           'ultimaMovimentacao': tipo,
           'timestamp': FieldValue.serverTimestamp(),
           'responsavel': responsavel,
-          'localizacao': endereco,
+          'localizacao': enderecoAproximado,
+          'coordenadas': GeoPoint(position.latitude, position.longitude),
           'projetoId': _projetoSelecionadoId,
           'nomeProjeto': nomeProjetoSelecionado,
           'userId': userId,
@@ -248,10 +288,7 @@ class _TelaHomeState extends State<TelaHome> {
               content: Text('Equipamento $qrCode registrado com sucesso!'),
             ),
           );
-          setState(() {
-            _imagemSelecionada = null;
-            _responsavelController.clear();
-          });
+          setState(() => _imagemSelecionada = null);
         }
       }
     } catch (e) {
@@ -262,9 +299,7 @@ class _TelaHomeState extends State<TelaHome> {
       }
     } finally {
       if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
       }
     }
   }
@@ -272,6 +307,7 @@ class _TelaHomeState extends State<TelaHome> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[100],
       appBar: AppBar(
         title: Text('Olá, $_nomeUsuario!'),
         backgroundColor: Colors.deepPurple,
@@ -286,153 +322,186 @@ class _TelaHomeState extends State<TelaHome> {
       ),
       body: Stack(
         children: [
-          SingleChildScrollView(
-            child: Padding(
+          if (_carregandoDadosIniciais)
+            const Center(child: CircularProgressIndicator())
+          else
+            ListView(
               padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  if (_carregandoProjetos) ...[
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: CircularProgressIndicator(),
-                      ),
-                    ),
-                  ] else if (_listaProjetos.isEmpty) ...[
-                    const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: Text(
-                          'Nenhum projeto vinculado a você.\nPeça a um administrador para vincular.',
-                          textAlign: TextAlign.center,
+              children: [
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        const Text(
+                          'Registrar Movimentação',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                    ),
-                  ] else ...[
-                    DropdownButtonFormField<String>(
-                      decoration: const InputDecoration(
-                        labelText: 'Selecione o Projeto',
-                        border: OutlineInputBorder(),
-                      ),
-                      value: _projetoSelecionadoId,
-                      items: _listaProjetos
-                          .map(
-                            (projeto) => DropdownMenuItem(
-                              value: projeto.id,
-                              child: Text(projeto.nome),
+                        const Divider(height: 24),
+                        if (_listaProjetos.isEmpty)
+                          const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(16.0),
+                              child: Text(
+                                'Nenhum projeto vinculado a você.\nPeça a um administrador para vincular.',
+                                textAlign: TextAlign.center,
+                              ),
                             ),
                           )
-                          .toList(),
-                      onChanged: (value) {
-                        setState(() {
-                          _projetoSelecionadoId = value;
-                        });
-                      },
-                    ),
-                  ],
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _responsavelController,
-                    decoration: const InputDecoration(
-                      labelText: 'Seu Nome (Responsável)',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.person_pin_rounded),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-
-                  OutlinedButton.icon(
-                    icon: const Icon(Icons.camera_alt),
-                    label: const Text('1. Tirar Foto Obrigatória'),
-                    onPressed: _capturarFoto,
-                    style: OutlinedButton.styleFrom(
-                      side: BorderSide(
-                        color: _imagemSelecionada != null
-                            ? Colors.green
-                            : Colors.grey,
-                      ),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      textStyle: const TextStyle(fontSize: 16),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  if (_imagemSelecionada != null)
-                    Stack(
-                      alignment: Alignment.topRight,
-                      children: [
-                        Container(
-                          height: 150,
-                          width: double.infinity,
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.green),
-                            borderRadius: BorderRadius.circular(4),
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: Image.file(
-                              _imagemSelecionada!,
-                              fit: BoxFit.cover,
+                        else
+                          DropdownButtonFormField<String>(
+                            decoration: const InputDecoration(
+                              labelText: '1. Selecione o Projeto',
+                              border: OutlineInputBorder(),
+                              prefixIcon: Icon(Icons.business_center),
                             ),
+                            value: _projetoSelecionadoId,
+                            items: _listaProjetos
+                                .map(
+                                  (projeto) => DropdownMenuItem(
+                                    value: projeto.id,
+                                    child: Text(projeto.nome),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (value) {
+                              setState(() {
+                                _projetoSelecionadoId = value;
+                              });
+                              _salvarPreferenciaDeProjeto(value);
+                            },
                           ),
+                        const SizedBox(height: 16),
+                        TextField(
+                          controller: _responsavelController,
+                          decoration: const InputDecoration(
+                            labelText: '2. Seu Nome (Responsável)',
+                            border: OutlineInputBorder(),
+                            prefixIcon: Icon(Icons.person),
+                          ),
+                          readOnly: true,
                         ),
-                        IconButton(
-                          icon: const CircleAvatar(
-                            backgroundColor: Colors.black54,
-                            child: Icon(
-                              Icons.close,
-                              color: Colors.white,
-                              size: 18,
+                        const SizedBox(height: 16),
+                        _imagemSelecionada == null
+                            ? SizedBox(
+                                height: 100,
+                                child: OutlinedButton.icon(
+                                  icon: const Icon(Icons.camera_alt, size: 40),
+                                  label: const Text(
+                                    '3. Tirar Foto Obrigatória',
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: Colors.grey.shade600,
+                                    side: BorderSide(
+                                      color: Colors.grey.shade400,
+                                      width: 2,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  onPressed: _capturarFoto,
+                                ),
+                              )
+                            : Stack(
+                                alignment: Alignment.topRight,
+                                children: [
+                                  Container(
+                                    height: 150,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: Colors.green,
+                                        width: 2,
+                                      ),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: ClipRRect(
+                                      borderRadius: BorderRadius.circular(11),
+                                      child: Image.file(
+                                        _imagemSelecionada!,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const CircleAvatar(
+                                      backgroundColor: Colors.black54,
+                                      child: Icon(
+                                        Icons.close,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    onPressed: () => setState(() {
+                                      _imagemSelecionada = null;
+                                    }),
+                                  ),
+                                ],
+                              ),
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.arrow_downward),
+                                label: const Text('4. Entrada'),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  backgroundColor: Colors.green,
+                                  foregroundColor: Colors.white,
+                                ),
+                                onPressed:
+                                    _isLoading || _imagemSelecionada == null
+                                    ? null
+                                    : () => _registrarMovimentacao('Entrada'),
+                              ),
                             ),
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _imagemSelecionada = null;
-                            });
-                          },
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.arrow_upward),
+                                label: const Text('4. Saída'),
+                                style: ElevatedButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 16,
+                                  ),
+                                  backgroundColor: Colors.orange.shade800,
+                                  foregroundColor: Colors.white,
+                                ),
+                                onPressed:
+                                    _isLoading || _imagemSelecionada == null
+                                    ? null
+                                    : () => _registrarMovimentacao('Saída'),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-
-                  const SizedBox(height: 24),
-
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.qr_code_scanner),
-                    label: const Text('2. Registrar Entrada'),
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      textStyle: const TextStyle(fontSize: 16),
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                    ),
-                    onPressed: _isLoading || _imagemSelecionada == null
-                        ? null
-                        : () => _registrarMovimentacao('Entrada'),
                   ),
-                  const SizedBox(height: 16),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.qr_code_scanner),
-                    label: const Text('2. Registrar Saída'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.orange.shade700,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      textStyle: const TextStyle(fontSize: 16),
-                    ),
-                    onPressed: _isLoading || _imagemSelecionada == null
-                        ? null
-                        : () => _registrarMovimentacao('Saída'),
-                  ),
-                  const SizedBox(height: 40),
-                  const Divider(),
-                  const SizedBox(height: 24),
-                  OutlinedButton.icon(
+                ),
+                const SizedBox(height: 24),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: OutlinedButton.icon(
                     icon: const Icon(Icons.inventory_2_outlined),
-                    label: const Text('Ver Estoque Atual'),
+                    label: const Text('Ver Estoque Atual do Projeto'),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       textStyle: const TextStyle(fontSize: 16),
+                      foregroundColor: Colors.deepPurple,
+                      side: const BorderSide(color: Colors.deepPurple),
                     ),
                     onPressed: () {
                       if (_projetoSelecionadoId == null) {
@@ -454,10 +523,10 @@ class _TelaHomeState extends State<TelaHome> {
                       );
                     },
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ),
+
           if (_isLoading)
             Container(
               color: Colors.black54,

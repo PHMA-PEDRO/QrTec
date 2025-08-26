@@ -1,7 +1,5 @@
-// lib/telas/tela_estoque.dart
-
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class TelaEstoque extends StatelessWidget {
@@ -14,24 +12,17 @@ class TelaEstoque extends StatelessWidget {
     }
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        contentPadding: EdgeInsets.zero,
-        content: InteractiveViewer(
+      builder: (context) => Dialog(
+        child: InteractiveViewer(
           child: Image.network(
             fotoUrl,
-            fit: BoxFit.cover,
+            fit: BoxFit.contain,
             loadingBuilder: (context, child, loadingProgress) {
               if (loadingProgress == null) return child;
               return const Center(child: CircularProgressIndicator());
             },
           ),
         ),
-        actions: [
-          TextButton(
-            child: const Text('Fechar'),
-            onPressed: () => Navigator.of(context).pop(),
-          )
-        ],
       ),
     );
   }
@@ -47,20 +38,21 @@ class TelaEstoque extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: FirebaseFirestore.instance
             .collection('estoque_atual')
-            // CORREÇÃO: O nome do campo deve ser 'projetoId' (com 'j' minúsculo)
             .where('projetoId', isEqualTo: projectId)
             .where('status', isEqualTo: 'Em Estoque')
+            .orderBy('timestamp', descending: true)
             .snapshots(),
-        
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
           if (snapshot.hasError) {
-            return const Center(child: Text('Ocorreu um erro. Verifique os índices do Firestore.'));
+            return const Center(child: Text('Erro ao carregar o estoque.'));
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text('Nenhum equipamento em estoque neste projeto.'));
+            return const Center(
+              child: Text('Nenhum equipamento em estoque neste projeto.'),
+            );
           }
 
           final estoque = snapshot.data!.docs;
@@ -69,32 +61,35 @@ class TelaEstoque extends StatelessWidget {
             padding: const EdgeInsets.all(8.0),
             itemCount: estoque.length,
             itemBuilder: (context, index) {
-              final doc = estoque[index];
-              final dados = doc.data() as Map<String, dynamic>;
-
+              final dados = estoque[index].data() as Map<String, dynamic>;
               final timestamp = dados['timestamp'] as Timestamp?;
               final String dataFormatada = timestamp != null
                   ? DateFormat('dd/MM/yyyy HH:mm').format(timestamp.toDate())
                   : 'Data indisponível';
-              
               final String? fotoUrl = dados['fotoUrl'];
+              final String localizacao =
+                  dados['localizacao'] ?? 'Local não informado';
 
               return Card(
                 elevation: 4,
                 margin: const EdgeInsets.symmetric(vertical: 8),
                 child: ListTile(
-                  leading: const Icon(Icons.computer, size: 40, color: Colors.green),
+                  leading: const Icon(
+                    Icons.computer,
+                    size: 40,
+                    color: Colors.green,
+                  ),
                   title: Text('TAG: ${dados['tag'] ?? 'N/A'}'),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text('Responsável: ${dados['responsavel'] ?? 'N/A'}'),
-                      Text('Local da Entrada: ${dados['localizacao'] ?? 'N/A'}'),
+                      Text('Local da Entrada: $localizacao'),
                       Text('Data da Entrada: $dataFormatada'),
                     ],
                   ),
-                  trailing: fotoUrl != null 
-                      ? const Icon(Icons.camera_alt, color: Colors.grey) 
+                  trailing: fotoUrl != null
+                      ? const Icon(Icons.camera_alt, color: Colors.grey)
                       : null,
                   onTap: () => _mostrarImagem(context, fotoUrl),
                   isThreeLine: true,

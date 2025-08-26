@@ -4,43 +4,35 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-// Enum para representar os estados do filtro
 enum FiltroHistorico { todos, entradas, saidas }
 
 class TelaHistoricoGeral extends StatefulWidget {
   const TelaHistoricoGeral({super.key});
-
   @override
   State<TelaHistoricoGeral> createState() => _TelaHistoricoGeralState();
 }
 
 class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
-  // O estado do filtro começa como "todos"
   FiltroHistorico _filtroSelecionado = FiltroHistorico.todos;
 
   void _mostrarImagem(BuildContext context, String? fotoUrl) {
     if (fotoUrl == null || fotoUrl.isEmpty) return;
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        contentPadding: EdgeInsets.zero,
-        content: InteractiveViewer(child: Image.network(fotoUrl)),
-      ),
+      builder: (context) =>
+          Dialog(child: InteractiveViewer(child: Image.network(fotoUrl))),
     );
   }
 
-  // Função que constrói a consulta ao Firestore baseada no filtro
   Query _construirConsulta() {
     Query consulta = FirebaseFirestore.instance.collection('movimentacoes');
 
-    // Aplica o filtro se não for "todos"
     if (_filtroSelecionado == FiltroHistorico.entradas) {
       consulta = consulta.where('tipo', isEqualTo: 'Entrada');
     } else if (_filtroSelecionado == FiltroHistorico.saidas) {
       consulta = consulta.where('tipo', isEqualTo: 'Saída');
     }
 
-    // Sempre ordena pela data mais recente
     return consulta.orderBy('timestamp', descending: true);
   }
 
@@ -54,23 +46,22 @@ class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
       ),
       body: Column(
         children: [
-          // Barra de filtro
           Container(
-            color: Colors.grey.shade200,
-            padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
+            color: Colors.white,
+            padding: const EdgeInsets.all(8.0),
             child: SegmentedButton<FiltroHistorico>(
               segments: const <ButtonSegment<FiltroHistorico>>[
-                ButtonSegment<FiltroHistorico>(
+                ButtonSegment(
                   value: FiltroHistorico.todos,
                   label: Text('Todos'),
-                  icon: Icon(Icons.list_alt),
+                  icon: Icon(Icons.list),
                 ),
-                ButtonSegment<FiltroHistorico>(
+                ButtonSegment(
                   value: FiltroHistorico.entradas,
                   label: Text('Entradas'),
                   icon: Icon(Icons.arrow_downward),
                 ),
-                ButtonSegment<FiltroHistorico>(
+                ButtonSegment(
                   value: FiltroHistorico.saidas,
                   label: Text('Saídas'),
                   icon: Icon(Icons.arrow_upward),
@@ -84,8 +75,6 @@ class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
               },
             ),
           ),
-
-          // A lista agora ocupa o resto da tela
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: _construirConsulta().snapshots(),
@@ -108,14 +97,13 @@ class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
                   );
                 }
 
-                final movimentacoes = snapshot.data!.docs;
-
                 return ListView.builder(
                   padding: const EdgeInsets.all(8.0),
-                  itemCount: movimentacoes.length,
+                  itemCount: snapshot.data!.docs.length,
                   itemBuilder: (context, index) {
-                    final doc = movimentacoes[index];
-                    final dados = doc.data() as Map<String, dynamic>;
+                    final dados =
+                        snapshot.data!.docs[index].data()
+                            as Map<String, dynamic>;
 
                     final bool isEntrada = dados['tipo'] == 'Entrada';
                     final String statusTexto = isEntrada
@@ -128,16 +116,33 @@ class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
                         ? Icons.arrow_downward
                         : Icons.arrow_upward;
                     final String? fotoUrl = dados['fotoUrl'];
-                    final timestamp = dados['timestamp'] as Timestamp?;
+                    final Timestamp? timestamp =
+                        dados['timestamp'] as Timestamp?;
                     final String dataFormatada = timestamp != null
                         ? DateFormat(
                             'dd/MM/yyyy HH:mm',
+                            'pt_BR',
                           ).format(timestamp.toDate())
                         : 'Data indisponível';
 
+                    // CORREÇÃO: Lógica robusta para lidar com ambos os formatos de localização
+                    String localizacaoTexto = 'Local não informado';
+                    if (dados.containsKey('localizacao')) {
+                      if (dados['localizacao'] is String) {
+                        localizacaoTexto = dados['localizacao'];
+                      } else if (dados['localizacao'] is GeoPoint) {
+                        final geoPoint = dados['localizacao'] as GeoPoint;
+                        localizacaoTexto =
+                            'Lat: ${geoPoint.latitude.toStringAsFixed(4)}, Lon: ${geoPoint.longitude.toStringAsFixed(4)}';
+                      }
+                    }
+
                     return Card(
                       elevation: 4,
-                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      margin: const EdgeInsets.symmetric(
+                        vertical: 8,
+                        horizontal: 8,
+                      ),
                       child: ListTile(
                         leading: CircleAvatar(
                           backgroundColor: statusCor,
@@ -159,6 +164,7 @@ class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
                               'Responsável: ${dados['responsavel'] ?? 'N/A'}',
                             ),
                             Text('Data: $dataFormatada'),
+                            Text('Local: $localizacaoTexto'),
                           ],
                         ),
                         trailing: fotoUrl != null

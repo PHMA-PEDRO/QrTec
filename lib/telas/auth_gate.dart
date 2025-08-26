@@ -21,35 +21,90 @@ class AuthGate extends StatelessWidget {
             body: Center(child: CircularProgressIndicator()),
           );
         }
+
         if (!snapshot.hasData) {
           return const TelaLogin();
         }
+
         final user = snapshot.data!;
+
         if (!user.emailVerified) {
           return const TelaVerificarEmail();
         }
-        return FutureBuilder<DocumentSnapshot>(
-          future: FirebaseFirestore.instance
-              .collection('usuarios')
-              .doc(user.uid)
-              .get(),
-          builder: (context, userDocSnapshot) {
-            if (userDocSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
-            }
-            if (userDocSnapshot.hasData && userDocSnapshot.data!.exists) {
-              final data = userDocSnapshot.data!.data() as Map<String, dynamic>;
-              final String funcao = data['funcao'] ?? 'cliente';
-              if (funcao == 'admin') {
-                return const TelaAdminDashboard();
-              } else {
-                return const TelaHome();
-              }
-            }
+
+        // AQUI ESTÁ A CORREÇÃO DEFINITIVA:
+        // Passamos uma chave única (o UID do usuário) para o RoleChecker.
+        // Quando o UID muda (logout e login com outra conta), o Flutter
+        // destrói o RoleChecker antigo e cria um novo, forçando-o a buscar
+        // os dados do novo usuário.
+        return RoleChecker(key: ValueKey(user.uid), user: user);
+      },
+    );
+  }
+}
+
+// WIDGET AUXILIAR para buscar a função do usuário de forma segura
+class RoleChecker extends StatelessWidget {
+  final User user;
+  const RoleChecker({super.key, required this.user});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<DocumentSnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('usuarios')
+          .doc(user.uid)
+          .get(),
+      builder: (context, userDocSnapshot) {
+        if (userDocSnapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (userDocSnapshot.hasError) {
+          return Scaffold(
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Text(
+                  "Erro ao carregar seu perfil.\n\nDetalhes: ${userDocSnapshot.error}",
+                ),
+              ),
+            ),
+          );
+        }
+
+        if (userDocSnapshot.hasData && userDocSnapshot.data!.exists) {
+          final data = userDocSnapshot.data!.data() as Map<String, dynamic>;
+          final String funcao = data['funcao'] ?? 'cliente';
+
+          if (funcao == 'admin') {
+            return const TelaAdminDashboard();
+          } else {
             return const TelaHome();
-          },
+          }
+        }
+
+        return Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text(
+                    "Erro crítico: seu perfil de usuário não foi encontrado no banco de dados.",
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => FirebaseAuth.instance.signOut(),
+                    child: const Text('Voltar para o Login'),
+                  ),
+                ],
+              ),
+            ),
+          ),
         );
       },
     );
