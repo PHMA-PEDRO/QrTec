@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -57,5 +58,41 @@ class AuthService {
         const SnackBar(content: Text('Link para redefinir a senha enviado.')),
       );
     }
+  }
+
+  /// Limpa completamente todos os dados de autenticação e cache
+  Future<void> clearAllAuthData() async {
+    try {
+      // Limpar todas as preferências locais
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      // Limpar cache do Firebase Auth
+      await _auth.signOut();
+
+      // Forçar limpeza de tokens e dados de sessão
+      final currentUser = _auth.currentUser;
+      if (currentUser != null) {
+        try {
+          await currentUser.delete();
+        } catch (e) {
+          // Se não conseguir deletar, pelo menos limpar os dados
+          await _auth.signOut();
+        }
+      }
+
+      // Aguardar para garantir que tudo foi limpo
+      await Future.delayed(const Duration(milliseconds: 1000));
+    } catch (e) {
+      // Garantir que o logout aconteça mesmo com erro
+      await _auth.signOut();
+    }
+  }
+
+  /// Verifica se há dados de autenticação residuais
+  Future<bool> hasResidualAuthData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final keys = prefs.getKeys();
+    return keys.isNotEmpty || _auth.currentUser != null;
   }
 }

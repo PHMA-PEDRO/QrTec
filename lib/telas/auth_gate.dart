@@ -3,13 +3,40 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:qrtec_final/services/auth_service.dart';
 import 'package:qrtec_final/telas/tela_admin_dashboard.dart';
 import 'package:qrtec_final/telas/tela_home.dart';
 import 'package:qrtec_final/telas/tela_login.dart';
 import 'package:qrtec_final/telas/tela_verificar_email.dart';
 
-class AuthGate extends StatelessWidget {
+class AuthGate extends StatefulWidget {
   const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  final _authService = AuthService();
+
+  @override
+  void initState() {
+    super.initState();
+    _limparDadosResiduais();
+  }
+
+  /// Limpa dados residuais de autenticação ao inicializar
+  Future<void> _limparDadosResiduais() async {
+    try {
+      // Verificar se há dados residuais
+      if (await _authService.hasResidualAuthData()) {
+        // Limpar dados residuais silenciosamente
+        await _authService.clearAllAuthData();
+      }
+    } catch (e) {
+      // Ignorar erros na limpeza inicial
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

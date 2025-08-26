@@ -11,8 +11,6 @@ plugins {
 android {
     namespace = "com.example.qrtec_final"
     compileSdk = flutter.compileSdkVersion
-    ndkVersion = flutter.ndkVersion
-
     ndkVersion = "27.0.12077973"
 
     compileOptions {
@@ -29,10 +27,15 @@ android {
         applicationId = "com.example.qrtec_final"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 23
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        
+        // Desabilitar reCAPTCHA e App Check
+        manifestPlaceholders["RECAPTCHA_SITE_KEY"] = ""
+        manifestPlaceholders["ENABLE_APP_CHECK"] = "false"
+        manifestPlaceholders["ENABLE_RECAPTCHA"] = "false"
     }
 
     buildTypes {

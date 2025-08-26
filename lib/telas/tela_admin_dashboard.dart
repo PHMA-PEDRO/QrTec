@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:qrtec_final/services/auth_service.dart';
 import 'package:qrtec_final/telas/tela_busca_historico.dart';
 import 'package:qrtec_final/telas/tela_cadastro_equipamento.dart';
 import 'package:qrtec_final/telas/tela_cadastro_projeto.dart';
@@ -13,13 +14,27 @@ class TelaAdminDashboard extends StatelessWidget {
   const TelaAdminDashboard({super.key});
 
   Future<void> _fazerLogout(BuildContext context) async {
-    await FirebaseAuth.instance.signOut();
-    if (context.mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const TelaLogin()),
-        (Route<dynamic> route) => false,
-      );
+    try {
+      // Usar o serviço de autenticação para limpeza completa
+      final authService = AuthService();
+      await authService.clearAllAuthData();
+
+      if (context.mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const TelaLogin()),
+          (Route<dynamic> route) => false,
+        );
+      }
+    } catch (e) {
+      // Se houver erro, forçar logout mesmo assim
+      if (context.mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const TelaLogin()),
+          (Route<dynamic> route) => false,
+        );
+      }
     }
   }
 

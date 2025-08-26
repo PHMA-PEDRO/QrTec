@@ -11,6 +11,7 @@ import 'package:qrtec_final/telas/tela_estoque.dart';
 import 'package:qrtec_final/telas/tela_login.dart';
 import 'package:qrtec_final/telas/tela_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:qrtec_final/services/auth_service.dart';
 
 // Modelo simples para guardar os dados do projeto
 class Projeto {
@@ -102,15 +103,27 @@ class _TelaHomeState extends State<TelaHome> {
   }
 
   Future<void> _fazerLogout() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove('ultimo_projeto_id');
-    await _auth.signOut();
-    if (mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const TelaLogin()),
-        (Route<dynamic> route) => false,
-      );
+    try {
+      // Usar o serviço de autenticação para limpeza completa
+      final authService = AuthService();
+      await authService.clearAllAuthData();
+
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const TelaLogin()),
+          (Route<dynamic> route) => false,
+        );
+      }
+    } catch (e) {
+      // Se houver erro, forçar logout mesmo assim
+      if (mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const TelaLogin()),
+          (Route<dynamic> route) => false,
+        );
+      }
     }
   }
 

@@ -20,11 +20,35 @@ class _TelaLoginState extends State<TelaLogin> {
   bool _isLoading = false;
   bool _senhaOculta = true;
 
+  @override
+  void initState() {
+    super.initState();
+    _limparDadosResiduais();
+  }
+
+  /// Limpa dados residuais de autenticação ao inicializar a tela
+  Future<void> _limparDadosResiduais() async {
+    try {
+      // Verificar se há dados residuais
+      if (await _authService.hasResidualAuthData()) {
+        // Limpar dados residuais silenciosamente
+        await _authService.clearAllAuthData();
+      }
+    } catch (e) {
+      // Ignorar erros na limpeza inicial
+    }
+  }
+
   Future<void> _fazerLogin() async {
     if (!_formKey.currentState!.validate()) return;
+
+    // Limpar dados residuais antes do login
+    await _limparDadosResiduais();
+
     setState(() {
       _isLoading = true;
     });
+
     try {
       await _authService.signInWithEmailAndPassword(
         context: context,

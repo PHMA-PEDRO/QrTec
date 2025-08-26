@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Desabilitar reCAPTCHA -->
+    <bool name="firebase_auth_enable_recaptcha">false</bool>
+    
+    <!-- Desabilitar App Check -->
+    <bool name="firebase_app_check_enabled">false</bool>
+    
+    <!-- Configurações de segurança reduzidas -->
+    <string name="firebase_auth_recaptcha_site_key"></string>
+    <string name="firebase_auth_recaptcha_secret_key"></string>
+</resources>
