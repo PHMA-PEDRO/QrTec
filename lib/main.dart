@@ -4,18 +4,12 @@ import 'package:flutter/material.dart';
 import 'package:qrtec_final/firebase_options.dart';
 import 'package:qrtec_final/telas/auth_gate.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Configurações para desabilitar App Check e reCAPTCHA
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  // Configurar Firebase Auth para não usar reCAPTCHA
-  // Isso é feito através das configurações do Android
-
   await initializeDateFormatting('pt_BR', null);
-
   runApp(const MyApp());
 }
 
@@ -31,6 +25,14 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
+      localizationsDelegates: const [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      supportedLocales: const [
+        Locale('pt', 'BR'),
+      ],
       home: const AuthGate(),
     );
   }

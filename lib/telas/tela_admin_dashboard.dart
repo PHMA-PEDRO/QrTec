@@ -1,5 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:qrtec_final/services/auth_service.dart';
 import 'package:qrtec_final/telas/tela_busca_historico.dart';
