@@ -1,5 +1,3 @@
-// lib/telas/tela_cadastro_equipamento.dart
-
 import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:shimmer/shimmer.dart';
 
 class TelaGerenciamentoEquipamentos extends StatelessWidget {
   const TelaGerenciamentoEquipamentos({super.key});
@@ -90,7 +89,6 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
                   ),
                 ),
                 pw.SizedBox(height: 10),
-                // CORREÇÃO: Removido o 'const' daqui para resolver o erro
                 pw.Text(nome, style: pw.TextStyle(fontSize: 18)),
                 pw.Text(
                   descricao,
@@ -105,12 +103,10 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
         },
       ),
     );
-
     final output = await getTemporaryDirectory();
     final file = File("${output.path}/etiqueta_qr_$tag.pdf");
     await file.writeAsBytes(await pdf.save());
     final xfile = XFile(file.path);
-    // CORREÇÃO: Sintaxe correta do Share
     await Share.shareXFiles([xfile], text: 'Etiqueta para o equipamento $tag');
   }
 
@@ -270,7 +266,6 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
 // ABA 2: GERENCIAR EQUIPAMENTOS EXISTENTES
 class AbaGerenciarExistentes extends StatefulWidget {
   const AbaGerenciarExistentes({super.key});
-
   @override
   State<AbaGerenciarExistentes> createState() => _AbaGerenciarExistentesState();
 }
@@ -315,7 +310,6 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
                   ),
                 ),
                 pw.SizedBox(height: 10),
-                // CORREÇÃO: Removido o 'const' daqui para resolver o erro
                 pw.Text(nome, style: pw.TextStyle(fontSize: 18)),
                 pw.Text(
                   descricao,
@@ -334,7 +328,6 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
     final file = File("${output.path}/etiqueta_qr_$tag.pdf");
     await file.writeAsBytes(await pdf.save());
     final xfile = XFile(file.path);
-    // CORREÇÃO: Sintaxe correta do Share
     await Share.shareXFiles([xfile], text: 'Etiqueta para o equipamento $tag');
   }
 
@@ -513,12 +506,26 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
                 .orderBy('tag')
                 .snapshots(),
             builder: (context, snapshot) {
-              if (!snapshot.hasData) {
-                return const Center(child: CircularProgressIndicator());
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return ListView.builder(
+                  padding: const EdgeInsets.all(8.0),
+                  itemCount: 6,
+                  itemBuilder: (context, index) => const ListItemSkeleton(),
+                );
               }
-              if (snapshot.data!.docs.isEmpty) {
-                return const Center(
-                  child: Text('Nenhum equipamento cadastrado.'),
+              if (snapshot.hasError) {
+                return const EmptyStateWidget(
+                  icon: Icons.error_outline,
+                  title: 'Ocorreu um Erro',
+                  message: 'Não foi possível carregar os equipamentos.',
+                );
+              }
+              if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                return const EmptyStateWidget(
+                  icon: Icons.computer_outlined,
+                  title: 'Nenhum Equipamento Cadastrado',
+                  message:
+                      'Use a aba "Cadastrar Novo" para adicionar o primeiro equipamento.',
                 );
               }
 
@@ -532,8 +539,10 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
               }).toList();
 
               if (equipamentosFiltrados.isEmpty) {
-                return const Center(
-                  child: Text('Nenhum equipamento encontrado.'),
+                return const EmptyStateWidget(
+                  icon: Icons.search_off,
+                  title: 'Nenhum Equipamento Encontrado',
+                  message: 'Tente um termo de busca diferente.',
                 );
               }
 
@@ -598,6 +607,71 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
           ),
         ),
       ],
+    );
+  }
+}
+
+// Widgets reutilizáveis
+class EmptyStateWidget extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+  const EmptyStateWidget({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 80, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ListItemSkeleton extends StatelessWidget {
+  const ListItemSkeleton({super.key});
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: Card(
+        elevation: 4,
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        child: ListTile(
+          leading: const CircleAvatar(backgroundColor: Colors.white),
+          title: Container(height: 16, width: 150, color: Colors.white),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Container(height: 12, width: 200, color: Colors.white),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

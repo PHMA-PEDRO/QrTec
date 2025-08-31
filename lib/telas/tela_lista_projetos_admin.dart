@@ -3,9 +3,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:qrtec_final/telas/tela_estoque.dart';
+import 'package:shimmer/shimmer.dart'; // Import do shimmer
 
-// O modelo de projeto precisa estar acessível aqui.
-// Para evitar erros, o definimos diretamente no arquivo por enquanto.
 class Projeto {
   final String id;
   final String nome;
@@ -31,7 +30,6 @@ class TelaListaProjetosAdmin extends StatefulWidget {
 }
 
 class _TelaListaProjetosAdminState extends State<TelaListaProjetosAdmin> {
-  // Variável de estado para guardar o texto da busca
   String _textoBusca = '';
 
   @override
@@ -44,7 +42,6 @@ class _TelaListaProjetosAdminState extends State<TelaListaProjetosAdmin> {
       ),
       body: Column(
         children: [
-          // CAMPO DE BUSCA
           Padding(
             padding: const EdgeInsets.all(16.0),
             child: TextField(
@@ -60,8 +57,6 @@ class _TelaListaProjetosAdminState extends State<TelaListaProjetosAdmin> {
               },
             ),
           ),
-
-          // LISTA DE RESULTADOS
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
@@ -69,28 +64,41 @@ class _TelaListaProjetosAdminState extends State<TelaListaProjetosAdmin> {
                   .orderBy('nomeProjeto')
                   .snapshots(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return ListView.builder(
+                    itemCount: 5,
+                    itemBuilder: (context, index) => const ListItemSkeleton(),
+                  );
                 }
-                if (snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                    child: Text('Nenhum projeto cadastrado.'),
+                if (snapshot.hasError) {
+                  return const EmptyStateWidget(
+                    icon: Icons.error_outline,
+                    title: 'Ocorreu um Erro',
+                    message: 'Não foi possível carregar os projetos.',
+                  );
+                }
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return const EmptyStateWidget(
+                    icon: Icons.business_center_outlined,
+                    title: 'Nenhum Projeto Cadastrado',
+                    message:
+                        'Use o painel de gerenciamento para adicionar o primeiro projeto.',
                   );
                 }
 
-                // LÓGICA DE FILTRO
                 final todosProjetos = snapshot.data!.docs;
                 final projetosFiltrados = todosProjetos.where((doc) {
                   final projeto = Projeto.fromFirestore(doc);
-                  // Filtra se o nome do projeto (em minúsculas) contém o texto da busca (em minúsculas)
                   return projeto.nome.toLowerCase().contains(
                     _textoBusca.toLowerCase(),
                   );
                 }).toList();
 
                 if (projetosFiltrados.isEmpty) {
-                  return const Center(
-                    child: Text('Nenhum projeto encontrado.'),
+                  return const EmptyStateWidget(
+                    icon: Icons.search_off,
+                    title: 'Nenhum Projeto Encontrado',
+                    message: 'Tente um termo de busca diferente.',
                   );
                 }
 
@@ -141,6 +149,68 @@ class _TelaListaProjetosAdminState extends State<TelaListaProjetosAdmin> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+// Widgets reutilizáveis (podemos movê-los para um arquivo separado depois)
+class EmptyStateWidget extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+
+  const EmptyStateWidget({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 80, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ListItemSkeleton extends StatelessWidget {
+  const ListItemSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: Card(
+        elevation: 4,
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+        child: ListTile(
+          leading: const CircleAvatar(backgroundColor: Colors.white),
+          title: Container(height: 16, width: 150, color: Colors.white),
+          subtitle: Container(height: 12, width: 100, color: Colors.white),
+        ),
       ),
     );
   }

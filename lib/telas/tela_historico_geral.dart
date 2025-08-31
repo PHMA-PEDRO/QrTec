@@ -1,22 +1,34 @@
+// lib/telas/tela_historico_geral.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 
-// Enum para representar os estados do filtro de forma organizada
 enum FiltroHistorico { todos, entradas, saidas }
 
 class TelaHistoricoGeral extends StatefulWidget {
-  const TelaHistoricoGeral({super.key});
+  final FiltroHistorico filtroInicial;
+
+  const TelaHistoricoGeral({
+    super.key,
+    this.filtroInicial = FiltroHistorico.todos,
+  });
+
   @override
   State<TelaHistoricoGeral> createState() => _TelaHistoricoGeralState();
 }
 
 class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
-  // O estado do filtro começa como "todos" por padrão
-  FiltroHistorico _filtroSelecionado = FiltroHistorico.todos;
-  // Variáveis para guardar as datas do filtro
+  late FiltroHistorico _filtroSelecionado;
   DateTime? _dataInicial;
   DateTime? _dataFinal;
+
+  @override
+  void initState() {
+    super.initState();
+    _filtroSelecionado = widget.filtroInicial;
+  }
 
   void _mostrarImagem(BuildContext context, String? fotoUrl) {
     if (fotoUrl == null || fotoUrl.isEmpty) {
@@ -44,27 +56,22 @@ class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
     );
   }
 
-  // Função que constrói a consulta ao Firestore baseada nos filtros
   Query _construirConsulta() {
     Query consulta = FirebaseFirestore.instance.collection('movimentacoes');
 
-    // Aplica o filtro de tipo (Entrada/Saída)
     if (_filtroSelecionado == FiltroHistorico.entradas) {
       consulta = consulta.where('tipo', isEqualTo: 'Entrada');
     } else if (_filtroSelecionado == FiltroHistorico.saidas) {
       consulta = consulta.where('tipo', isEqualTo: 'Saída');
     }
 
-    // Aplica o filtro de data inicial, se houver
     if (_dataInicial != null) {
       consulta = consulta.where(
         'timestamp',
         isGreaterThanOrEqualTo: _dataInicial,
       );
     }
-    // Aplica o filtro de data final, se houver
     if (_dataFinal != null) {
-      // Adicionamos 1 dia e subtraímos um milissegundo para incluir todos os horários do dia final
       DateTime dataFinalAjustada = DateTime(
         _dataFinal!.year,
         _dataFinal!.month,
@@ -79,18 +86,16 @@ class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
       );
     }
 
-    // Sempre ordena pela data mais recente
     return consulta.orderBy('timestamp', descending: true);
   }
 
-  // Função para mostrar o seletor de data
   Future<void> _selecionarData(BuildContext context, bool isDataInicial) async {
     final DateTime? dataSelecionada = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime(2020),
       lastDate: DateTime.now().add(const Duration(days: 1)),
-      locale: const Locale('pt', 'BR'), // Para o calendário em português
+      locale: const Locale('pt', 'BR'),
     );
 
     if (dataSelecionada != null) {
@@ -116,7 +121,6 @@ class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
       ),
       body: Column(
         children: [
-          // Barra de filtros
           Container(
             color: Colors.white,
             padding: const EdgeInsets.all(8.0),
@@ -191,24 +195,25 @@ class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
               stream: _construirConsulta().snapshots(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
+                  return ListView.builder(
+                    itemCount: 5,
+                    itemBuilder: (context, index) => const ListItemSkeleton(),
+                  );
                 }
                 if (snapshot.hasError) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(16.0),
-                      child: Text(
-                        'Ocorreu um erro. Verifique se os índices do Firestore foram criados para esta consulta.',
-                        textAlign: TextAlign.center,
-                      ),
-                    ),
+                  return const EmptyStateWidget(
+                    icon: Icons.error_outline,
+                    title: 'Ocorreu um Erro',
+                    message:
+                        'Não foi possível carregar o histórico. Verifique se os índices do Firestore foram criados para esta consulta.',
                   );
                 }
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'Nenhuma movimentação encontrada para este filtro.',
-                    ),
+                  return const EmptyStateWidget(
+                    icon: Icons.search_off,
+                    title: 'Nenhum Registro Encontrado',
+                    message:
+                        'Não há movimentações que correspondam aos filtros selecionados.',
                   );
                 }
 
@@ -298,6 +303,77 @@ class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class EmptyStateWidget extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String message;
+
+  const EmptyStateWidget({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 80, color: Colors.grey.shade400),
+            const SizedBox(height: 16),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.headlineSmall,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class ListItemSkeleton extends StatelessWidget {
+  const ListItemSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Shimmer.fromColors(
+      baseColor: Colors.grey.shade300,
+      highlightColor: Colors.grey.shade100,
+      child: Card(
+        elevation: 4,
+        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+        child: ListTile(
+          leading: const CircleAvatar(backgroundColor: Colors.white),
+          title: Container(height: 16, width: 150, color: Colors.white),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              Container(height: 12, width: 200, color: Colors.white),
+              const SizedBox(height: 4),
+              Container(height: 12, width: 180, color: Colors.white),
+              const SizedBox(height: 4),
+              Container(height: 12, width: 120, color: Colors.white),
+            ],
+          ),
+        ),
       ),
     );
   }
