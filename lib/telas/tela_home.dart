@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:qrtec_final/telas/tela_estoque.dart';
+import 'package:qrtec_final/telas/tela_historico_pessoal.dart';
 import 'package:qrtec_final/telas/tela_login.dart';
 import 'package:qrtec_final/telas/tela_scanner.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -83,7 +84,6 @@ class _TelaHomeState extends State<TelaHome> {
       if (mounted) setState(() => _listaProjetos = []);
       return;
     }
-
     List<Projeto> projetosTemp = [];
     for (String id in projetosIds) {
       final projetoDoc = await _firestore.collection('projetos').doc(id).get();
@@ -233,81 +233,135 @@ class _TelaHomeState extends State<TelaHome> {
       );
 
       if (qrCode != null) {
-        Position position = await Geolocator.getCurrentPosition();
-
-        String enderecoAproximado = 'Endereço não encontrado';
-        try {
-          List<Placemark> placemarks = await placemarkFromCoordinates(
-            position.latitude,
-            position.longitude,
+        final docEquipamento = await _firestore
+            .collection('equipamentos')
+            .doc(qrCode)
+            .get();
+        if (!docEquipamento.exists) {
+          throw Exception(
+            "Equipamento com a TAG '$qrCode' não encontrado no cadastro.",
           );
-          if (placemarks.isNotEmpty) {
-            Placemark place = placemarks.first;
-            enderecoAproximado =
-                "${place.street ?? 'Rua desconhecida'} - ${place.subLocality ?? 'Bairro desconhecido'}, ${place.locality ?? ''} - ${place.administrativeArea ?? ''}, CEP: ${place.postalCode ?? ''}";
-          }
-        } catch (e) {
-          enderecoAproximado = "Falha ao obter endereço";
         }
+        final dadosEquipamento = docEquipamento.data()!;
+        final nomeEquipamento =
+            dadosEquipamento['nome'] ?? 'Nome não encontrado';
+        final descricaoEquipamento =
+            dadosEquipamento['descricao'] ?? 'Sem descrição';
 
-        final String nomeArquivo =
-            '${DateTime.now().millisecondsSinceEpoch}_$qrCode.jpg';
-        final Reference ref = _storage
-            .ref()
-            .child('movimentacoes_fotos')
-            .child(nomeArquivo);
-        await ref.putFile(_imagemSelecionada!);
-        final String fotoUrl = await ref.getDownloadURL();
-
-        final String responsavel = _responsavelController.text.trim();
-        final String? userId = _auth.currentUser?.uid;
-        final String nomeProjetoSelecionado = _listaProjetos
-            .firstWhere((p) => p.id == _projetoSelecionadoId!)
-            .nome;
-
-        await _firestore.collection('movimentacoes').add({
-          'tagEquipamento': qrCode,
-          'responsavel': responsavel,
-          'tipo': tipo,
-          'timestamp': FieldValue.serverTimestamp(),
-          'userId': userId,
-          'localizacao': enderecoAproximado,
-          'coordenadas': GeoPoint(position.latitude, position.longitude),
-          'projetoId': _projetoSelecionadoId,
-          'nomeProjeto': nomeProjetoSelecionado,
-          'fotoUrl': fotoUrl,
-        });
-
-        final String novoStatus = (tipo == 'Entrada')
-            ? 'Em Estoque'
-            : 'Em Transporte';
-        await _firestore.collection('estoque_atual').doc(qrCode).set({
-          'tag': qrCode,
-          'status': novoStatus,
-          'ultimaMovimentacao': tipo,
-          'timestamp': FieldValue.serverTimestamp(),
-          'responsavel': responsavel,
-          'localizacao': enderecoAproximado,
-          'coordenadas': GeoPoint(position.latitude, position.longitude),
-          'projetoId': _projetoSelecionadoId,
-          'nomeProjeto': nomeProjetoSelecionado,
-          'userId': userId,
-          'fotoUrl': fotoUrl,
-        }, SetOptions(merge: true));
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Equipamento $qrCode registrado com sucesso!'),
+        final bool? confirmado = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Confirmar Movimentação?'),
+            content: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'TAG: $qrCode',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 8),
+                Text('Nome: $nomeEquipamento'),
+                Text('Descrição: $descricaoEquipamento'),
+                const Divider(height: 24),
+                Text(
+                  'Ação: $tipo de equipamento',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
             ),
-          );
-          setState(() => _imagemSelecionada = null);
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancelar'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                child: const Text('Confirmar'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirmado == true) {
+          Position position = await Geolocator.getCurrentPosition();
+          String enderecoAproximado = 'Endereço não encontrado';
+          try {
+            List<Placemark> placemarks = await placemarkFromCoordinates(
+              position.latitude,
+              position.longitude,
+            );
+            if (placemarks.isNotEmpty) {
+              Placemark place = placemarks.first;
+              enderecoAproximado =
+                  "${place.street ?? 'Rua desconhecida'} - ${place.subLocality ?? 'Bairro desconhecido'}, ${place.locality ?? ''}, CEP: ${place.postalCode ?? ''}";
+            }
+          } catch (e) {
+            enderecoAproximado = "Falha ao obter endereço";
+          }
+
+          final String nomeArquivo =
+              '${DateTime.now().millisecondsSinceEpoch}_$qrCode.jpg';
+          final Reference ref = _storage
+              .ref()
+              .child('movimentacoes_fotos')
+              .child(nomeArquivo);
+          await ref.putFile(_imagemSelecionada!);
+          final String fotoUrl = await ref.getDownloadURL();
+          final String responsavel = _responsavelController.text.trim();
+          final String? userId = _auth.currentUser?.uid;
+          final String nomeProjetoSelecionado = _listaProjetos
+              .firstWhere((p) => p.id == _projetoSelecionadoId!)
+              .nome;
+
+          await _firestore.collection('movimentacoes').add({
+            'tagEquipamento': qrCode,
+            'responsavel': responsavel,
+            'tipo': tipo,
+            'timestamp': FieldValue.serverTimestamp(),
+            'userId': userId,
+            'localizacao': enderecoAproximado,
+            'coordenadas': GeoPoint(position.latitude, position.longitude),
+            'projetoId': _projetoSelecionadoId,
+            'nomeProjeto': nomeProjetoSelecionado,
+            'fotoUrl': fotoUrl,
+          });
+
+          final String novoStatus = (tipo == 'Entrada')
+              ? 'Em Estoque'
+              : 'Em Transporte';
+          await _firestore.collection('estoque_atual').doc(qrCode).set({
+            'tag': qrCode,
+            'status': novoStatus,
+            'ultimaMovimentacao': tipo,
+            'timestamp': FieldValue.serverTimestamp(),
+            'responsavel': responsavel,
+            'localizacao': enderecoAproximado,
+            'coordenadas': GeoPoint(position.latitude, position.longitude),
+            'projetoId': _projetoSelecionadoId,
+            'nomeProjeto': nomeProjetoSelecionado,
+            'userId': userId,
+            'fotoUrl': fotoUrl,
+          }, SetOptions(merge: true));
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Equipamento $qrCode registrado com sucesso!'),
+              ),
+            );
+            setState(() => _imagemSelecionada = null);
+          }
         }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao registrar: ${e.toString()}')),
+          SnackBar(
+            content: Text(
+              'Erro ao registrar: ${e.toString().replaceAll("Exception: ", "")}',
+            ),
+          ),
         );
       }
     } finally {
@@ -505,37 +559,63 @@ class _TelaHomeState extends State<TelaHome> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.inventory_2_outlined),
-                    label: const Text('Ver Estoque Atual do Projeto'),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      textStyle: const TextStyle(fontSize: 16),
-                      foregroundColor: Colors.deepPurple,
-                      side: const BorderSide(color: Colors.deepPurple),
-                    ),
-                    onPressed: () {
-                      if (_projetoSelecionadoId == null) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Por favor, selecione um projeto para ver o estoque.',
-                            ),
-                          ),
-                        );
-                        return;
-                      }
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              TelaEstoque(projectId: _projetoSelecionadoId!),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.inventory_2_outlined),
+                        label: const Text('Ver Estoque'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          textStyle: const TextStyle(fontSize: 16),
+                          foregroundColor: Colors.deepPurple,
+                          side: const BorderSide(color: Colors.deepPurple),
                         ),
-                      );
-                    },
-                  ),
+                        onPressed: () {
+                          if (_projetoSelecionadoId == null) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Por favor, selecione um projeto.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => TelaEstoque(
+                                projectId: _projetoSelecionadoId!,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        icon: const Icon(Icons.person_pin_circle_outlined),
+                        label: const Text('Meu Histórico'),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          textStyle: const TextStyle(fontSize: 16),
+                          foregroundColor: Colors.deepPurple,
+                          side: const BorderSide(color: Colors.deepPurple),
+                        ),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const TelaHistoricoPessoal(),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
