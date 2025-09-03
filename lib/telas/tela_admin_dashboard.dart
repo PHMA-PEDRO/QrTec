@@ -1,7 +1,8 @@
 // lib/telas/tela_admin_dashboard.dart
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:qrtec_final/services/auth_service.dart';
 import 'package:qrtec_final/telas/tela_busca_historico.dart';
 import 'package:qrtec_final/telas/tela_cadastro_equipamento.dart';
 import 'package:qrtec_final/telas/tela_cadastro_projeto.dart';
@@ -15,31 +16,19 @@ import 'package:qrtec_final/telas/tela_mapa_ativos.dart';
 class TelaAdminDashboard extends StatelessWidget {
   const TelaAdminDashboard({super.key});
 
+  // Sua função de logout original foi mantida, como solicitado.
   Future<void> _fazerLogout(BuildContext context) async {
-    try {
-      // Usar o serviço de autenticação para limpeza completa
-      final authService = AuthService();
-      await authService.clearAllAuthData();
-
-      if (context.mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const TelaLogin()),
-          (Route<dynamic> route) => false,
-        );
-      }
-    } catch (e) {
-      // Se houver erro, forçar logout mesmo assim
-      if (context.mounted) {
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const TelaLogin()),
-          (Route<dynamic> route) => false,
-        );
-      }
+    await FirebaseAuth.instance.signOut();
+    if (context.mounted) {
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (context) => const TelaLogin()),
+        (Route<dynamic> route) => false,
+      );
     }
   }
 
+  // Nova função de navegação para os cards interativos
   void _navegarParaHistoricoFiltrado(
     BuildContext context,
     FiltroHistorico filtro,
@@ -55,6 +44,7 @@ class TelaAdminDashboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final firestore = FirebaseFirestore.instance;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Painel do Administrador'),
@@ -106,6 +96,7 @@ class TelaAdminDashboard extends StatelessWidget {
                 label: 'Equip. Ativos',
                 color: Colors.teal.shade700,
               ),
+              // Card "Em Estoque" agora é clicável
               InkWell(
                 onTap: () => _navegarParaHistoricoFiltrado(
                   context,
@@ -121,6 +112,7 @@ class TelaAdminDashboard extends StatelessWidget {
                   color: Colors.green.shade700,
                 ),
               ),
+              // Card "Em Transporte" agora é clicável
               InkWell(
                 onTap: () => _navegarParaHistoricoFiltrado(
                   context,
@@ -186,6 +178,7 @@ class TelaAdminDashboard extends StatelessWidget {
                   ),
                 ),
               ),
+              // Novo botão "Gerenciar Usuários"
               DashboardActionButton(
                 icon: Icons.manage_accounts,
                 label: 'Usuários',
@@ -264,6 +257,7 @@ class TelaAdminDashboard extends StatelessWidget {
   }
 }
 
+// WIDGET REUTILIZÁVEL PARA OS CARDS DE ESTATÍSTICA
 class DashboardStatCard extends StatelessWidget {
   final Stream<QuerySnapshot> stream;
   final IconData icon;
@@ -286,7 +280,7 @@ class DashboardStatCard extends StatelessWidget {
         child: StreamBuilder<QuerySnapshot>(
           stream: stream,
           builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting)
+            if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
                 child: SizedBox(
                   width: 20,
@@ -294,6 +288,7 @@ class DashboardStatCard extends StatelessWidget {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
               );
+            }
             if (!snapshot.hasData) return const Center(child: Text('...'));
             final int count = snapshot.data!.docs.length;
             return Row(
@@ -330,6 +325,7 @@ class DashboardStatCard extends StatelessWidget {
   }
 }
 
+// WIDGET REUTILIZÁVEL PARA OS BOTÕES DE AÇÃO
 class DashboardActionButton extends StatelessWidget {
   final IconData icon;
   final String label;

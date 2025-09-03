@@ -1,1 +1,38 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"qrtec-inventory-app-654f7","appId":"1:884934582474:android:14fb410aa686c2f3549433","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"qrtec-inventory-app-654f7","configurations":{"android":"1:884934582474:android:14fb410aa686c2f3549433","ios":"1:884934582474:ios:9bfc9c61179dc863549433","macos":"1:884934582474:ios:9bfc9c61179dc863549433","web":"1:884934582474:web:6d62dd19684994fd549433","windows":"1:884934582474:web:d63f22b9ce89f683549433"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "qrtec-inventory-app-654f7",
+          "appId": "1:884934582474:android:14fb410aa686c2f3549433",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "qrtec-inventory-app-654f7",
+          "configurations": {
+            "android": "1:884934582474:android:14fb410aa686c2f3549433",
+            "ios": "1:884934582474:ios:9bfc9c61179dc863549433",
+            "macos": "1:884934582474:ios:9bfc9c61179dc863549433",
+            "web": "1:884934582474:web:6d62dd19684994fd549433",
+            "windows": "1:884934582474:web:d63f22b9ce89f683549433"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}

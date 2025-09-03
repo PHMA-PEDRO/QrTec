@@ -6,7 +6,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:shimmer/shimmer.dart';
+import 'package:qrtec_final/telas/tela_historico_geral.dart'; // Para os widgets reutilizáveis
 
 class TelaGerenciamentoEquipamentos extends StatelessWidget {
   const TelaGerenciamentoEquipamentos({super.key});
@@ -50,6 +50,7 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
   final _tagController = TextEditingController();
   final _nomeController = TextEditingController();
   final _descricaoController = TextEditingController();
+  String? _tipoEquipamentoSelecionado;
   bool _isLoading = false;
 
   Future<void> _gerarECompartilharPdf(
@@ -141,6 +142,9 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
               _tagController.clear();
               _nomeController.clear();
               _descricaoController.clear();
+              setState(() {
+                _tipoEquipamentoSelecionado = null;
+              });
             },
           ),
           ElevatedButton.icon(
@@ -179,6 +183,7 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
         'fotos': [],
         'status_operacional': 'Ativo',
         'observacao_inativacao': '',
+        'tipo_equipamento': _tipoEquipamentoSelecionado,
       });
       if (mounted) {
         _mostrarDialogSucesso(tag, nome, descricao);
@@ -234,6 +239,29 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
                 validator: (value) => (value == null || value.trim().isEmpty)
                     ? 'O nome é obrigatório.'
                     : null,
+              ),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _tipoEquipamentoSelecionado,
+                decoration: const InputDecoration(
+                  labelText: 'Tipo de Equipamento',
+                  border: OutlineInputBorder(),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'PADRÃO', child: Text('Padrão')),
+                  DropdownMenuItem(value: 'LOCAÇÃO', child: Text('Locação')),
+                  DropdownMenuItem(
+                    value: 'TI UTILITARIOS',
+                    child: Text('TI Utilitários'),
+                  ),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _tipoEquipamentoSelecionado = value;
+                  });
+                },
+                validator: (value) =>
+                    value == null ? 'Por favor, selecione um tipo.' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -554,6 +582,7 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
                   final dados = doc.data() as Map<String, dynamic>;
                   final String status = dados['status_operacional'] ?? 'Ativo';
                   final bool isAtivo = status == 'Ativo';
+                  final String tipo = dados['tipo_equipamento'] ?? 'N/A';
 
                   return Card(
                     color: isAtivo ? Colors.white : Colors.grey.shade300,
@@ -563,7 +592,8 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
                         color: isAtivo ? Colors.indigo : Colors.grey,
                       ),
                       title: Text(dados['tag'] ?? ''),
-                      subtitle: Text(dados['nome'] ?? ''),
+                      subtitle: Text('${dados['nome'] ?? ''}\nTipo: $tipo'),
+                      isThreeLine: true,
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -607,71 +637,6 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
           ),
         ),
       ],
-    );
-  }
-}
-
-// Widgets reutilizáveis
-class EmptyStateWidget extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String message;
-  const EmptyStateWidget({
-    super.key,
-    required this.icon,
-    required this.title,
-    required this.message,
-  });
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 80, color: Colors.grey.shade400),
-            const SizedBox(height: 16),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.headlineSmall,
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              message,
-              style: Theme.of(context).textTheme.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class ListItemSkeleton extends StatelessWidget {
-  const ListItemSkeleton({super.key});
-  @override
-  Widget build(BuildContext context) {
-    return Shimmer.fromColors(
-      baseColor: Colors.grey.shade300,
-      highlightColor: Colors.grey.shade100,
-      child: Card(
-        elevation: 4,
-        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-        child: ListTile(
-          leading: const CircleAvatar(backgroundColor: Colors.white),
-          title: Container(height: 16, width: 150, color: Colors.white),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 4),
-              Container(height: 12, width: 200, color: Colors.white),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }
