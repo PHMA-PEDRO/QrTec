@@ -38,6 +38,8 @@
         <meta-data
             android:name="firebase_auth_enable_recaptcha"
             android:value="false" />
+        <meta-data android:name="com.google.android.geo.API_KEY"
+             android:value="AIzaSyC8HbxoOaNZYE7fNfeknVmC3Tl71N7swXk"/>
     </application>
     
     <queries>
