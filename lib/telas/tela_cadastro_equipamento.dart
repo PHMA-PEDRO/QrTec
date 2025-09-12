@@ -50,12 +50,17 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
   final _tagController = TextEditingController();
   final _nomeController = TextEditingController();
   final _descricaoController = TextEditingController();
+  String _tipoEquipamento = 'PADRÃO'; // Valor padrão
   bool _isLoading = false;
+
+  // Lista de tipos de equipamento disponíveis
+  final List<String> _tiposEquipamento = ['PADRÃO', 'LOCAÇÃO', 'TI UTILITARIO'];
 
   Future<void> _gerarECompartilharPdf(
     String tag,
     String nome,
     String descricao,
+    String tipoEquipamento,
   ) async {
     final pdf = pw.Document();
     pdf.addPage(
@@ -91,6 +96,10 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
                 pw.SizedBox(height: 10),
                 pw.Text(nome, style: pw.TextStyle(fontSize: 18)),
                 pw.Text(
+                  'Tipo: $tipoEquipamento',
+                  style: pw.TextStyle(fontSize: 14),
+                ),
+                pw.Text(
                   descricao,
                   style: pw.TextStyle(
                     fontSize: 14,
@@ -110,7 +119,12 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
     await Share.shareXFiles([xfile], text: 'Etiqueta para o equipamento $tag');
   }
 
-  void _mostrarDialogSucesso(String tag, String nome, String descricao) {
+  void _mostrarDialogSucesso(
+    String tag,
+    String nome,
+    String descricao,
+    String tipoEquipamento,
+  ) {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -131,6 +145,11 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
               tag,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Tipo: $tipoEquipamento',
+              style: const TextStyle(fontSize: 14),
+            ),
           ],
         ),
         actions: [
@@ -141,12 +160,16 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
               _tagController.clear();
               _nomeController.clear();
               _descricaoController.clear();
+              setState(() {
+                _tipoEquipamento = 'PADRÃO'; // Reset para valor padrão
+              });
             },
           ),
           ElevatedButton.icon(
             icon: const Icon(Icons.share),
             label: const Text('Compartilhar PDF'),
-            onPressed: () => _gerarECompartilharPdf(tag, nome, descricao),
+            onPressed: () =>
+                _gerarECompartilharPdf(tag, nome, descricao, tipoEquipamento),
           ),
         ],
       ),
@@ -163,6 +186,8 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
     final String tag = _tagController.text.trim().toUpperCase();
     final String nome = _nomeController.text.trim();
     final String descricao = _descricaoController.text.trim();
+    final String tipoEquipamento = _tipoEquipamento;
+
     try {
       final docRef = FirebaseFirestore.instance
           .collection('equipamentos')
@@ -175,13 +200,14 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
         'tag': tag,
         'nome': nome,
         'descricao': descricao,
+        'tipo_equipamento': tipoEquipamento,
         'dataCadastro': Timestamp.now(),
         'fotos': [],
         'status_operacional': 'Ativo',
         'observacao_inativacao': '',
       });
       if (mounted) {
-        _mostrarDialogSucesso(tag, nome, descricao);
+        _mostrarDialogSucesso(tag, nome, descricao, tipoEquipamento);
       }
     } catch (e) {
       if (mounted) {
@@ -236,6 +262,27 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
                     : null,
               ),
               const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                value: _tipoEquipamento,
+                decoration: const InputDecoration(
+                  labelText: 'Tipo de Equipamento',
+                  border: OutlineInputBorder(),
+                ),
+                items: _tiposEquipamento.map((String tipo) {
+                  return DropdownMenuItem<String>(
+                    value: tipo,
+                    child: Text(tipo),
+                  );
+                }).toList(),
+                onChanged: (String? newValue) {
+                  setState(() {
+                    _tipoEquipamento = newValue!;
+                  });
+                },
+                validator: (value) =>
+                    value == null ? 'Selecione o tipo de equipamento' : null,
+              ),
+              const SizedBox(height: 16),
               TextFormField(
                 controller: _descricaoController,
                 decoration: const InputDecoration(
@@ -278,6 +325,7 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
     String tag,
     String nome,
     String descricao,
+    String tipoEquipamento,
   ) async {
     final pdf = pw.Document();
     pdf.addPage(
@@ -312,6 +360,10 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
                 pw.SizedBox(height: 10),
                 pw.Text(nome, style: pw.TextStyle(fontSize: 18)),
                 pw.Text(
+                  'Tipo: $tipoEquipamento',
+                  style: pw.TextStyle(fontSize: 14),
+                ),
+                pw.Text(
                   descricao,
                   style: pw.TextStyle(
                     fontSize: 14,
@@ -331,18 +383,23 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
     await Share.shareXFiles([xfile], text: 'Etiqueta para o equipamento $tag');
   }
 
-  void _mostrarDialogEquipamento(String tag, String nome, String descricao) {
+  void _mostrarDialogEquipamento(Map<String, dynamic> dados) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text(tag),
+        title: Text(dados['tag']),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
               width: 200,
               height: 200,
-              child: QrImageView(data: tag, version: QrVersions.auto),
+              child: QrImageView(data: dados['tag'], version: QrVersions.auto),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Tipo: ${dados['tipo_equipamento'] ?? 'PADRÃO'}',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -354,7 +411,12 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
           ElevatedButton.icon(
             icon: const Icon(Icons.share),
             label: const Text('Compartilhar PDF'),
-            onPressed: () => _gerarECompartilharPdf(tag, nome, descricao),
+            onPressed: () => _gerarECompartilharPdf(
+              dados['tag'],
+              dados['nome'],
+              dados['descricao'],
+              dados['tipo_equipamento'] ?? 'PADRÃO',
+            ),
           ),
         ],
       ),
@@ -563,7 +625,17 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
                         color: isAtivo ? Colors.indigo : Colors.grey,
                       ),
                       title: Text(dados['tag'] ?? ''),
-                      subtitle: Text(dados['nome'] ?? ''),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(dados['nome'] ?? ''),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Tipo: ${dados['tipo_equipamento'] ?? 'PADRÃO'}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
@@ -594,11 +666,7 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
                                 ),
                         ],
                       ),
-                      onTap: () => _mostrarDialogEquipamento(
-                        dados['tag'],
-                        dados['nome'],
-                        dados['descricao'],
-                      ),
+                      onTap: () => _mostrarDialogEquipamento(dados),
                     ),
                   );
                 },

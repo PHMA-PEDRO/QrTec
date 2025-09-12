@@ -149,12 +149,12 @@ class TelaAdminDashboard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           GridView.count(
-            crossAxisCount: 3,
+            crossAxisCount: 4, // Alterado para 4 colunas
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.8, // Ajustado para melhor proporção
             children: [
               DashboardActionButton(
                 icon: Icons.add_business_outlined,
@@ -209,12 +209,12 @@ class TelaAdminDashboard extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           GridView.count(
-            crossAxisCount: 3,
+            crossAxisCount: 4, // Alterado para 4 colunas
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            crossAxisSpacing: 16,
-            mainAxisSpacing: 16,
-            childAspectRatio: 1,
+            crossAxisSpacing: 12,
+            mainAxisSpacing: 12,
+            childAspectRatio: 0.8, // Ajustado para melhor proporção
             children: [
               DashboardActionButton(
                 icon: Icons.inventory_2_outlined,
@@ -348,13 +348,20 @@ class DashboardActionButton extends StatelessWidget {
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 36, color: Colors.indigo),
-            const SizedBox(height: 8),
-            Text(label, textAlign: TextAlign.center),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 32, color: Colors.indigo), // Tamanho reduzido
+              const SizedBox(height: 8),
+              Text(
+                label,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 12), // Fonte menor
+              ),
+            ],
+          ),
         ),
       ),
     );

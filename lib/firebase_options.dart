@@ -83,4 +83,5 @@ class DefaultFirebaseOptions {
     authDomain: 'qrtec-inventory-app-654f7.firebaseapp.com',
     storageBucket: 'qrtec-inventory-app-654f7.firebasestorage.app',
   );
+
 }
