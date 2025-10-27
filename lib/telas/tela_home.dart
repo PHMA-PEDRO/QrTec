@@ -84,18 +84,20 @@ class _TelaHomeState extends State<TelaHome> {
       if (mounted) setState(() => _listaProjetos = []);
       return;
     }
-    List<Projeto> projetosTemp = [];
-    for (String id in projetosIds) {
-      final projetoDoc = await _firestore.collection('projetos').doc(id).get();
-      if (projetoDoc.exists && (projetoDoc.data()?['status'] == 'ativo')) {
-        projetosTemp.add(
-          Projeto(
-            id: projetoDoc.id,
-            nome: projetoDoc.data()?['nomeProjeto'] ?? 'Nome indisponível',
+    // Buscar projetos em paralelo para reduzir tempo total
+    final futures = projetosIds.map(
+      (id) => _firestore.collection('projetos').doc(id).get(),
+    );
+    final docs = await Future.wait(futures);
+    final List<Projeto> projetosTemp = docs
+        .where((doc) => doc.exists && (doc.data()?['status'] == 'ativo'))
+        .map(
+          (doc) => Projeto(
+            id: doc.id,
+            nome: doc.data()?['nomeProjeto'] ?? 'Nome indisponível',
           ),
-        );
-      }
-    }
+        )
+        .toList();
     if (mounted) {
       setState(() => _listaProjetos = projetosTemp);
     }
@@ -227,8 +229,9 @@ class _TelaHomeState extends State<TelaHome> {
     setState(() => _isLoading = true);
 
     try {
-      final String? qrCode = await Navigator.push<String>(
-        context,
+      if (!mounted) return;
+      final navigator = Navigator.of(context);
+      final String? qrCode = await navigator.push<String>(
         MaterialPageRoute(builder: (context) => const TelaScanner()),
       );
 
@@ -247,7 +250,10 @@ class _TelaHomeState extends State<TelaHome> {
             dadosEquipamento['nome'] ?? 'Nome não encontrado';
         final descricaoEquipamento =
             dadosEquipamento['descricao'] ?? 'Sem descrição';
+        final tipoEquipamento =
+            dadosEquipamento['tipo_equipamento'] ?? 'PADRÃO';
 
+        if (!mounted) return;
         final bool? confirmado = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
@@ -287,17 +293,51 @@ class _TelaHomeState extends State<TelaHome> {
           Position position = await Geolocator.getCurrentPosition();
           String enderecoAproximado = 'Endereço não encontrado';
           try {
-            List<Placemark> placemarks = await placemarkFromCoordinates(
+            final placemarks = await placemarkFromCoordinates(
               position.latitude,
               position.longitude,
             );
             if (placemarks.isNotEmpty) {
-              Placemark place = placemarks.first;
-              enderecoAproximado =
-                  "${place.street ?? 'Rua desconhecida'} - ${place.subLocality ?? 'Bairro desconhecido'}, ${place.locality ?? ''}, CEP: ${place.postalCode ?? ''}";
+              final place = placemarks.first;
+              final rua = (place.thoroughfare?.trim().isNotEmpty == true)
+                  ? place.thoroughfare!.trim()
+                  : (place.street?.trim().isNotEmpty == true
+                        ? place.street!.trim()
+                        : 'Rua desconhecida');
+              final numero = (place.subThoroughfare?.trim().isNotEmpty == true)
+                  ? place.subThoroughfare!.trim()
+                  : 's/n';
+              final bairro = (place.subLocality?.trim().isNotEmpty == true)
+                  ? place.subLocality!.trim()
+                  : '';
+              final cidade = (place.locality?.trim().isNotEmpty == true)
+                  ? place.locality!.trim()
+                  : (place.subAdministrativeArea?.trim().isNotEmpty == true
+                        ? place.subAdministrativeArea!.trim()
+                        : '');
+              final estado =
+                  (place.administrativeArea?.trim().isNotEmpty == true)
+                  ? place.administrativeArea!.trim()
+                  : '';
+              final cep = (place.postalCode?.trim().isNotEmpty == true)
+                  ? place.postalCode!.trim()
+                  : '';
+
+              final ruaNumero = '$rua, $numero';
+              final cidadeEstado = [
+                cidade,
+                estado,
+              ].where((s) => s.isNotEmpty).join(' - ');
+              final partes = <String>[
+                ruaNumero,
+                if (bairro.isNotEmpty) bairro,
+                if (cidadeEstado.isNotEmpty) cidadeEstado,
+                if (cep.isNotEmpty) 'CEP: $cep',
+              ];
+              enderecoAproximado = partes.join(' • ');
             }
           } catch (e) {
-            enderecoAproximado = "Falha ao obter endereço";
+            enderecoAproximado = 'Falha ao obter endereço';
           }
 
           final String nomeArquivo =
@@ -325,6 +365,7 @@ class _TelaHomeState extends State<TelaHome> {
             'projetoId': _projetoSelecionadoId,
             'nomeProjeto': nomeProjetoSelecionado,
             'fotoUrl': fotoUrl,
+            'tipoEquipamento': tipoEquipamento,
           });
 
           final String novoStatus = (tipo == 'Entrada')
@@ -342,6 +383,10 @@ class _TelaHomeState extends State<TelaHome> {
             'nomeProjeto': nomeProjetoSelecionado,
             'userId': userId,
             'fotoUrl': fotoUrl,
+            'tipoEquipamento': tipoEquipamento,
+            // Ao mudar o status, limpar marcação de pronto para envio
+            'prontoParaEnvio': false,
+            'prontoParaEnvioTimestamp': null,
           }, SetOptions(merge: true));
 
           if (mounted) {

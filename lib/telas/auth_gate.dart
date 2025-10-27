@@ -22,7 +22,11 @@ class _AuthGateState extends State<AuthGate> {
   @override
   void initState() {
     super.initState();
-    _limparDadosResiduais();
+    // Adiar para depois do primeiro frame para não bloquear a montagem inicial
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // ignore: unawaited_futures
+      _limparDadosResiduais();
+    });
   }
 
   /// Limpa dados residuais de autenticação ao inicializar

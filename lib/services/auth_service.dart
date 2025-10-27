@@ -8,7 +8,6 @@ class AuthService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   Future<void> signInWithEmailAndPassword({
-    required BuildContext context,
     required String email,
     required String password,
   }) async {
@@ -48,16 +47,8 @@ class AuthService {
     }
   }
 
-  Future<void> sendPasswordResetEmail({
-    required BuildContext context,
-    required String email,
-  }) async {
+  Future<void> sendPasswordResetEmail({required String email}) async {
     await _auth.sendPasswordResetEmail(email: email);
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Link para redefinir a senha enviado.')),
-      );
-    }
   }
 
   /// Limpa completamente todos os dados de autenticação e cache

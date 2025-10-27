@@ -1,7 +1,6 @@
 // lib/telas/tela_admin_dashboard.dart
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:qrtec_final/telas/tela_busca_historico.dart';
 import 'package:qrtec_final/telas/tela_cadastro_equipamento.dart';
@@ -12,19 +11,34 @@ import 'package:qrtec_final/telas/tela_historico_geral.dart';
 import 'package:qrtec_final/telas/tela_lista_projetos_admin.dart';
 import 'package:qrtec_final/telas/tela_login.dart';
 import 'package:qrtec_final/telas/tela_mapa_ativos.dart';
+import 'package:qrtec_final/telas/tela_aprovar_envio.dart';
+import 'package:qrtec_final/services/auth_service.dart';
 
 class TelaAdminDashboard extends StatelessWidget {
   const TelaAdminDashboard({super.key});
 
-  // Sua função de logout original foi mantida, como solicitado.
   Future<void> _fazerLogout(BuildContext context) async {
-    await FirebaseAuth.instance.signOut();
-    if (context.mounted) {
-      Navigator.pushAndRemoveUntil(
-        context,
-        MaterialPageRoute(builder: (context) => const TelaLogin()),
-        (Route<dynamic> route) => false,
-      );
+    try {
+      // Usar o serviço de autenticação para limpeza completa
+      final authService = AuthService();
+      await authService.clearAllAuthData();
+
+      if (context.mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const TelaLogin()),
+          (Route<dynamic> route) => false,
+        );
+      }
+    } catch (e) {
+      // Se houver erro, forçar logout mesmo assim
+      if (context.mounted) {
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const TelaLogin()),
+          (Route<dynamic> route) => false,
+        );
+      }
     }
   }
 
@@ -126,6 +140,24 @@ class TelaAdminDashboard extends StatelessWidget {
                   icon: Icons.local_shipping,
                   label: 'Em Transporte',
                   color: Colors.orange.shade800,
+                ),
+              ),
+              InkWell(
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TelaAprovarEnvio(),
+                  ),
+                ),
+                child: DashboardStatCard(
+                  stream: firestore
+                      .collection('estoque_atual')
+                      .where('status', isEqualTo: 'Em Estoque')
+                      .where('prontoParaEnvio', isEqualTo: true)
+                      .snapshots(),
+                  icon: Icons.playlist_add_check_circle,
+                  label: 'Aguardando Envio',
+                  color: Colors.indigo.shade700,
                 ),
               ),
             ],

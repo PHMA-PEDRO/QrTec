@@ -51,18 +51,17 @@ class _TelaLoginState extends State<TelaLogin> {
 
     try {
       await _authService.signInWithEmailAndPassword(
-        context: context,
         email: _emailController.text.trim(),
         password: _senhaController.text.trim(),
       );
     } on FirebaseAuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro no login: ${e.message ?? "Ocorreu um erro."}'),
-          ),
-        );
-      }
+      if (!mounted) return;
+      final messenger = ScaffoldMessenger.of(context);
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text('Erro no login: ${e.message ?? "Ocorreu um erro."}'),
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -100,13 +99,17 @@ class _TelaLoginState extends State<TelaLogin> {
           ),
           ElevatedButton(
             onPressed: () async {
-              if (emailResetController.text.isNotEmpty && mounted) {
-                await _authService.sendPasswordResetEmail(
-                  context: context,
-                  email: emailResetController.text.trim(),
-                );
-                if (mounted) Navigator.of(context).pop();
-              }
+              final email = emailResetController.text.trim();
+              if (email.isEmpty) return;
+              final messenger = ScaffoldMessenger.of(context);
+              final navigator = Navigator.of(context);
+              await _authService.sendPasswordResetEmail(email: email);
+              messenger.showSnackBar(
+                const SnackBar(
+                  content: Text('Link para redefinição de senha enviado.'),
+                ),
+              );
+              navigator.pop();
             },
             child: const Text('Enviar'),
           ),

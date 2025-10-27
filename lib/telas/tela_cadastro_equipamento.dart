@@ -116,7 +116,9 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
     final file = File("${output.path}/etiqueta_qr_$tag.pdf");
     await file.writeAsBytes(await pdf.save());
     final xfile = XFile(file.path);
-    await Share.shareXFiles([xfile], text: 'Etiqueta para o equipamento $tag');
+    await SharePlus.instance.share(
+      ShareParams(files: [xfile], text: 'Etiqueta para o equipamento $tag'),
+    );
   }
 
   void _mostrarDialogSucesso(
@@ -380,7 +382,9 @@ class _AbaGerenciarExistentesState extends State<AbaGerenciarExistentes> {
     final file = File("${output.path}/etiqueta_qr_$tag.pdf");
     await file.writeAsBytes(await pdf.save());
     final xfile = XFile(file.path);
-    await Share.shareXFiles([xfile], text: 'Etiqueta para o equipamento $tag');
+    await SharePlus.instance.share(
+      ShareParams(files: [xfile], text: 'Etiqueta para o equipamento $tag'),
+    );
   }
 
   void _mostrarDialogEquipamento(Map<String, dynamic> dados) {

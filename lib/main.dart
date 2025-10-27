@@ -13,11 +13,13 @@ Future<void> main() async {
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  await FirebaseAppCheck.instance.activate(
-    androidProvider: AndroidProvider.debug,
-  );
+  // Não bloquear a UI com App Check; ativar em segundo plano
+  // ignore: unawaited_futures
+  FirebaseAppCheck.instance.activate(androidProvider: AndroidProvider.debug);
 
-  await initializeDateFormatting('pt_BR', null);
+  // Inicialização de localização de datas pode ser pesada; rodar em segundo plano
+  // ignore: unawaited_futures
+  initializeDateFormatting('pt_BR', null);
 
   runApp(const MyApp());
 }

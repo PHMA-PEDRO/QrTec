@@ -7,6 +7,8 @@ import 'package:shimmer/shimmer.dart';
 
 enum FiltroHistorico { todos, entradas, saidas }
 
+enum FiltroTipoEquip { todos, padrao, tiUtilitario, locacao }
+
 class TelaHistoricoGeral extends StatefulWidget {
   final FiltroHistorico filtroInicial;
 
@@ -23,6 +25,7 @@ class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
   late FiltroHistorico _filtroSelecionado;
   DateTime? _dataInicial;
   DateTime? _dataFinal;
+  FiltroTipoEquip _filtroTipo = FiltroTipoEquip.todos;
 
   @override
   void initState() {
@@ -84,6 +87,27 @@ class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
         'timestamp',
         isLessThanOrEqualTo: dataFinalAjustada,
       );
+    }
+
+    // Aplicar filtro por tipo de equipamento se diferente de "todos"
+    if (_filtroTipo != FiltroTipoEquip.todos) {
+      String valor;
+      switch (_filtroTipo) {
+        case FiltroTipoEquip.padrao:
+          valor = 'PADRÃO';
+          break;
+        case FiltroTipoEquip.tiUtilitario:
+          valor = 'TI UTILITARIO';
+          break;
+        case FiltroTipoEquip.locacao:
+          valor = 'LOCAÇÃO';
+          break;
+        case FiltroTipoEquip.todos:
+          valor = '';
+      }
+      if (valor.isNotEmpty) {
+        consulta = consulta.where('tipoEquipamento', isEqualTo: valor);
+      }
     }
 
     return consulta.orderBy('timestamp', descending: true);
@@ -150,6 +174,39 @@ class _TelaHistoricoGeralState extends State<TelaHistoricoGeral> {
                       _filtroSelecionado = newSelection.first;
                     });
                   },
+                ),
+                const SizedBox(height: 8),
+                // Filtro por tipo de equipamento
+                Row(
+                  children: [
+                    const Text('Tipo: '),
+                    const SizedBox(width: 8),
+                    DropdownButton<FiltroTipoEquip>(
+                      value: _filtroTipo,
+                      items: const [
+                        DropdownMenuItem(
+                          value: FiltroTipoEquip.todos,
+                          child: Text('Todos'),
+                        ),
+                        DropdownMenuItem(
+                          value: FiltroTipoEquip.padrao,
+                          child: Text('PADRÃO'),
+                        ),
+                        DropdownMenuItem(
+                          value: FiltroTipoEquip.tiUtilitario,
+                          child: Text('TI UTILITARIO'),
+                        ),
+                        DropdownMenuItem(
+                          value: FiltroTipoEquip.locacao,
+                          child: Text('LOCAÇÃO'),
+                        ),
+                      ],
+                      onChanged: (novo) {
+                        if (novo == null) return;
+                        setState(() => _filtroTipo = novo);
+                      },
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 8),
                 Row(
