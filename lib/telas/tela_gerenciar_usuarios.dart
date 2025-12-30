@@ -14,9 +14,15 @@ class TelaGerenciarUsuarios extends StatefulWidget {
 class _TelaGerenciarUsuariosState extends State<TelaGerenciarUsuarios> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<void> _salvarAlteracoesUsuario(String uid, String novoNome, String novaFuncao) async {
+  Future<void> _salvarAlteracoesUsuario(
+    String uid,
+    String novoNome,
+    String novaFuncao,
+  ) async {
     if (novoNome.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('O nome não pode ficar em branco.')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('O nome não pode ficar em branco.')),
+      );
       return;
     }
 
@@ -26,12 +32,16 @@ class _TelaGerenciarUsuariosState extends State<TelaGerenciarUsuarios> {
         'funcao': novaFuncao,
       });
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Usuário atualizado com sucesso!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Usuário atualizado com sucesso!')),
+        );
         Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao atualizar: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erro ao atualizar: $e')));
       }
     }
   }
@@ -52,14 +62,23 @@ class _TelaGerenciarUsuariosState extends State<TelaGerenciarUsuarios> {
                 children: [
                   TextField(
                     controller: nomeController,
-                    decoration: const InputDecoration(labelText: 'Nome', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: 'Nome',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<String>(
-                    value: funcaoSelecionada,
-                    decoration: const InputDecoration(labelText: 'Função', border: OutlineInputBorder()),
+                    initialValue: funcaoSelecionada,
+                    decoration: const InputDecoration(
+                      labelText: 'Função',
+                      border: OutlineInputBorder(),
+                    ),
                     items: const [
-                      DropdownMenuItem(value: 'cliente', child: Text('Cliente')),
+                      DropdownMenuItem(
+                        value: 'cliente',
+                        child: Text('Cliente'),
+                      ),
                       DropdownMenuItem(value: 'admin', child: Text('Admin')),
                     ],
                     onChanged: (value) {
@@ -73,9 +92,16 @@ class _TelaGerenciarUsuariosState extends State<TelaGerenciarUsuarios> {
                 ],
               ),
               actions: [
-                TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancelar')),
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancelar'),
+                ),
                 ElevatedButton(
-                  onPressed: () => _salvarAlteracoesUsuario(userData['uid'], nomeController.text, funcaoSelecionada),
+                  onPressed: () => _salvarAlteracoesUsuario(
+                    userData['uid'],
+                    nomeController.text,
+                    funcaoSelecionada,
+                  ),
                   child: const Text('Salvar'),
                 ),
               ],
@@ -98,13 +124,24 @@ class _TelaGerenciarUsuariosState extends State<TelaGerenciarUsuarios> {
         stream: _firestore.collection('usuarios').orderBy('nome').snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return ListView.builder(itemCount: 5, itemBuilder: (context, index) => const ListItemSkeleton());
+            return ListView.builder(
+              itemCount: 5,
+              itemBuilder: (context, index) => const ListItemSkeleton(),
+            );
           }
           if (snapshot.hasError) {
-            return const EmptyStateWidget(icon: Icons.error, title: 'Erro', message: 'Não foi possível carregar os usuários.');
+            return const EmptyStateWidget(
+              icon: Icons.error,
+              title: 'Erro',
+              message: 'Não foi possível carregar os usuários.',
+            );
           }
           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const EmptyStateWidget(icon: Icons.people, title: 'Nenhum Usuário', message: 'Nenhum usuário foi encontrado.');
+            return const EmptyStateWidget(
+              icon: Icons.people,
+              title: 'Nenhum Usuário',
+              message: 'Nenhum usuário foi encontrado.',
+            );
           }
 
           return ListView.builder(
@@ -118,7 +155,10 @@ class _TelaGerenciarUsuariosState extends State<TelaGerenciarUsuarios> {
               return Card(
                 child: ListTile(
                   // CORREÇÃO: O nome do ícone foi ajustado para um que existe
-                  leading: Icon(isAdmin ? Icons.admin_panel_settings : Icons.person, color: isAdmin ? Colors.amber.shade800 : Colors.blue),
+                  leading: Icon(
+                    isAdmin ? Icons.admin_panel_settings : Icons.person,
+                    color: isAdmin ? Colors.amber.shade800 : Colors.blue,
+                  ),
                   title: Text(dados['nome'] ?? 'Sem nome'),
                   subtitle: Text(dados['email'] ?? 'Sem e-mail'),
                   trailing: Row(
@@ -126,7 +166,9 @@ class _TelaGerenciarUsuariosState extends State<TelaGerenciarUsuarios> {
                     children: [
                       Chip(
                         label: Text(dados['funcao'] ?? 'cliente'),
-                        backgroundColor: isAdmin ? Colors.amber.shade100 : Colors.blue.shade100,
+                        backgroundColor: isAdmin
+                            ? Colors.amber.shade100
+                            : Colors.blue.shade100,
                       ),
                       IconButton(
                         icon: const Icon(Icons.edit_outlined),

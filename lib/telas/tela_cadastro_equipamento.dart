@@ -265,7 +265,7 @@ class _AbaCadastrarNovoState extends State<AbaCadastrarNovo> {
               ),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
-                value: _tipoEquipamento,
+                initialValue: _tipoEquipamento,
                 decoration: const InputDecoration(
                   labelText: 'Tipo de Equipamento',
                   border: OutlineInputBorder(),

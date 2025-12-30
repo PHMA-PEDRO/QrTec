@@ -475,7 +475,7 @@ class _TelaHomeState extends State<TelaHome> {
                               border: OutlineInputBorder(),
                               prefixIcon: Icon(Icons.business_center),
                             ),
-                            value: _projetoSelecionadoId,
+                            initialValue: _projetoSelecionadoId,
                             items: _listaProjetos
                                 .map(
                                   (projeto) => DropdownMenuItem(

@@ -140,7 +140,7 @@ class _AbaVincularNovoState extends State<AbaVincularNovo> {
                   labelText: 'Selecione o Usuário',
                   border: OutlineInputBorder(),
                 ),
-                value: _selectedUserId,
+                initialValue: _selectedUserId,
                 items: userItems,
                 onChanged: (value) => setState(() {
                   _selectedUserId = value;
@@ -173,7 +173,7 @@ class _AbaVincularNovoState extends State<AbaVincularNovo> {
                   labelText: 'Selecione o Projeto',
                   border: OutlineInputBorder(),
                 ),
-                value: _selectedProjectId,
+                initialValue: _selectedProjectId,
                 items: projectItems,
                 onChanged: (value) => setState(() {
                   _selectedProjectId = value;
@@ -291,7 +291,7 @@ class _AbaGerenciarPorProjetoState extends State<AbaGerenciarPorProjeto> {
                   labelText: 'Selecione um Projeto para Ver Vínculos',
                   border: OutlineInputBorder(),
                 ),
-                value: _projetoSelecionadoId,
+                initialValue: _projetoSelecionadoId,
                 items: projectItems,
                 onChanged: (value) => setState(() {
                   _projetoSelecionadoId = value;
@@ -468,7 +468,7 @@ class _AbaGerenciarPorUsuarioState extends State<AbaGerenciarPorUsuario> {
                   labelText: 'Selecione um Usuário para Ver Vínculos',
                   border: OutlineInputBorder(),
                 ),
-                value: _usuarioSelecionadoId,
+                initialValue: _usuarioSelecionadoId,
                 items: userItems,
                 onChanged: (value) => setState(() {
                   _usuarioSelecionadoId = value;
